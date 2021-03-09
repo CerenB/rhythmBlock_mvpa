@@ -32,6 +32,9 @@ funcFWHM = opt.funcFWHM;
 %% roi path
 % use parcels or NS mask?
 
+%use in output name
+roiSource = 'neurosnyth';
+
 maskPath = fullfile(fileparts(mfilename('fullpath')), '..', ...
               '..','..', 'RhythmCateg_ROI','neurosynth',...
                'functional', 'derivatives');
@@ -44,26 +47,26 @@ maskName = {'leftrrthres_7premotor_FDR_0.01.nii', ...
 % use in output roi name       
 maskLabel = {'rightPremotor', 'leftPremotor','SMA'};      
 
-%use in output name
-roiSource = 'neurosnyth';
 
 % parcels
 % if use parcels, re-writes mask names:
 if opt.mvpa.useParcel == 1
+    
+    roiSource = 'freesurfer';
+    
     maskPath = fullfile(fileparts(mfilename('fullpath')), '..', ...
         '..','..', 'RhythmCateg_ROI','freesurfer');
     
-%     maskName = {'thres5_s1_dec_rlauditorycx.nii', ...
-%                 'thres5_s1_dec_rrauditorycx.nii', ...
-%                 'rlbasalganglia.nii',...
-%                 'rrbasalganglia.nii'}; 
-    maskName = {'rlbasalganglia.nii',...
+    maskName = {'thres5_s1_dec_rlauditorycx.nii', ...
+                'thres5_s1_dec_rrauditorycx.nii', ...
+                'rlbasalganglia.nii',...
                 'rrbasalganglia.nii'}; 
+%     maskName = {'rlbasalganglia.nii',...
+%                 'rrbasalganglia.nii'}; 
 
-    maskLabel = {'leftBG','rightBG'};
-%     maskLabel = {'leftAud','rightAud', 'leftBG','rightBG'};
-    
-    roiSource = 'BG';
+%     maskLabel = {'leftBG','rightBG'};
+    maskLabel = {'leftAud','rightAud', 'leftBG','rightBG'};
+
 end
 
 %% set output folder/name
