@@ -10,7 +10,7 @@ function info = parcel2mask(action)
 % action 1 = makes individual/separate parcels and create binary masks
 % action 2 = combines the left hemisphere masks into 1 (e.g. left-basal
 % ganglia, or left-auditory cortex).
-% action 3 = realign and reslice the masks to the functional (4D.nii) image
+% action 3 = reslice the masks by using spm func to the functional (4D.nii) image
 % action 4 = smooths the masks 
 
 % be careful, it has two options, with auditory cortex and with basal
@@ -37,30 +37,43 @@ opt = getOptionBlockMvpa();
 % smooth info for ffxDir
 funcFWHM = 0;
 
-% parcel codes in FS LookUp Table
-% parcelCodes =[11136, 11175, 11133, 12136,12175, 12133];
-parcelCodes = [11, 12, 13, 26, 50, 51, 52, 58];
+% which parcels to use?
+useAudParcel = 1;
 
-% ROIs labels in FS LookUp table
-% parcelLabels ={'lPT' , 'ltransverse', 'lsup_transv',...
-%     'rPT', 'rtransverse', 'rsup_transv'};
-parcelLabels ={'lcaudate' , 'lputamen', 'lpallidum', 'lna',...
-               'rcaudate', 'rputamen', 'rpallidum', 'rna'};
+if useAudParcel == 1
+    % parcel codes in FS LookUp Table
+    parcelCodes =[11136, 11175, 11133, 12136,12175, 12133];
+    
+    % ROIs labels in FS LookUp table
+    parcelLabels ={'lPT' , 'ltransverse', 'lsup_transv',...
+        'rPT', 'rtransverse', 'rsup_transv'};
+    
+    % concat parcel name
+    concatParcelName = 'auditorycx.nii';
+    
+    % choose which masks to realign with functional image
+    maskToAlign = {'lauditorycx.nii','rauditorycx.nii'};
+    
+else
+    parcelCodes = [11, 12, 13, 26, 50, 51, 52, 58];
+    
+    parcelLabels ={'lcaudate' , 'lputamen', 'lpallidum', 'lna',...
+        'rcaudate', 'rputamen', 'rpallidum', 'rna'};
 
-% concat parcel name
-% concatParcelName = 'auditorycx.nii';
-concatParcelName = 'basalganglia.nii';
+    concatParcelName = 'basalganglia.nii';
 
-% choose which masks to realign with functional image
-% maskToAlign = {'lauditorycx.nii','rauditorycx.nii'};
-maskToAlign = {'lbasalganglia.nii','rbasalganglia.nii'};
+    maskToAlign = {'lbasalganglia.nii','rbasalganglia.nii'};
+    
+end
 
 % parcel numbers in 1 hemisphere
 parcelNb = length(parcelLabels)/2;
 
 wholeParcelName = 'destrieux.nii';
 
-% smooth the realigned/resliced mask?
+%% smooth the realigned/resliced mask?
+% only applied to AudCx, because BG does not need smoothing
+
 % if yes, then define the masks to be smoothed, and FWHM in mm
 maskToSmooth = {'rlauditorycx.nii','rrauditorycx.nii'};
 maskFWHM = 1;
