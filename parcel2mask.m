@@ -38,22 +38,22 @@ opt = getOptionBlockMvpa();
 funcFWHM = 0;
 
 % parcel codes in FS LookUp Table
-parcelCodes =[11136, 11175, 11133, 12136,12175, 12133];
-% parcelCodes = [11, 12, 13, 26, 50, 51, 52, 58];
+% parcelCodes =[11136, 11175, 11133, 12136,12175, 12133];
+parcelCodes = [11, 12, 13, 26, 50, 51, 52, 58];
 
 % ROIs labels in FS LookUp table
-parcelLabels ={'lPT' , 'ltransverse', 'lsup_transv',...
-    'rPT', 'rtransverse', 'rsup_transv'};
-% parcelLabels ={'lcaudate' , 'lputamen', 'lpallidum', 'lna',...
-%                'rcaudate', 'rputamen', 'rpallidum', 'rna'};
+% parcelLabels ={'lPT' , 'ltransverse', 'lsup_transv',...
+%     'rPT', 'rtransverse', 'rsup_transv'};
+parcelLabels ={'lcaudate' , 'lputamen', 'lpallidum', 'lna',...
+               'rcaudate', 'rputamen', 'rpallidum', 'rna'};
 
 % concat parcel name
-concatParcelName = 'auditorycx.nii';
-% concatParcelName = 'basalganglia.nii';
+% concatParcelName = 'auditorycx.nii';
+concatParcelName = 'basalganglia.nii';
 
 % choose which masks to realign with functional image
-maskToAlign = {'lauditorycx.nii','rauditorycx.nii'};
-% maskToAlign = {'lbasalganglia.nii','rbasalganglia.nii'};
+% maskToAlign = {'lauditorycx.nii','rauditorycx.nii'};
+maskToAlign = {'lbasalganglia.nii','rbasalganglia.nii'};
 
 % parcel numbers in 1 hemisphere
 parcelNb = length(parcelLabels)/2;
@@ -62,11 +62,11 @@ wholeParcelName = 'destrieux.nii';
 
 % smooth the realigned/resliced mask?
 % if yes, then define the masks to be smoothed, and FWHM in mm
-maskToSmooth = {'rrlauditorycx.nii','rrrauditorycx.nii'};
+maskToSmooth = {'rlauditorycx.nii','rrauditorycx.nii'};
 maskFWHM = 1;
 prefixDec = 'dec_';
 prefixSmooth = ['s',num2str(maskFWHM),'_'];
-threshold = 0.01;
+threshold = 0.05;
 
 %% let's shave fun
 switch action
@@ -203,29 +203,30 @@ switch action
                 
                 % call the realigned image
                 realignMaskName = [prefix,maskName];
-                realignMask = fullfile(parcelPath, subID,realignMaskName);
+                realignMaskPath = fullfile(parcelPath, subID,realignMaskName);
 
-                resliceRealignMask = fullfile(parcelPath, subID,[prefix,realignMaskName]);
-                resliceRealignMaskName = [prefix, realignMaskName];
-                
-                %reslice so that the resolution would be same as 4D image
-                reslice_nii(realignMask, resliceRealignMask);
+%                 resliceRealignMask = fullfile(parcelPath, subID,[prefix,realignMaskName]);
+%                 resliceRealignMaskName = [prefix, realignMaskName];
+%                 
+%                 %reslice so that the resolution would be same as 4D image
+%                 reslice_nii(realignMask, resliceRealignMask);
                 %% after reslicing, turn it again into binary mask
                 %load roi
-                mask = load_nii(resliceRealignMask); % 
+                realignMask = load_untouch_nii(realignMaskPath); % 
                 
                 % binarise
-                mask.img(mask.img < 0.1) = 0.0;
-                mask.img(mask.img > 0) = 1.0;
-                voxelNb = sum(mask.img(:));
+                realignMask.img(realignMask.img < threshold) = 0.0;
+                realignMask.img(realignMask.img > 0) = 1.0;
+                voxelNb = sum(realignMask.img(:));
                 
                 %save
-                save_nii(mask,resliceRealignMask);
+                save_untouch_nii(realignMask,realignMaskPath);
                 
                 % save voxel info into a struct
                 info(count).SUBname = subID;
-                info(count).ROIname = resliceRealignMaskName; % resliceRealignMaskName
+                info(count).ROIname = realignMaskName; % resliceRealignMaskName
                 info(count).ROInumVox = voxelNb;
+                info(count).problem = sum(realignMask.img(realignMask.img~=1));
                 count = count +1;
                 
             end
@@ -248,7 +249,7 @@ switch action
                 maskName = maskToSmooth{iMask};
                 
                 % load the mask
-                mask = load_nii(fullfile(parcelPath, subID, maskName));
+                mask = load_untouch_nii(fullfile(parcelPath, subID, maskName));
                 
                 % decimalise the mask
                 mask.hdr.dime.datatype= 16;
@@ -258,7 +259,7 @@ switch action
                 decimalMask{count,1} = fullfile(parcelPath, subID, ...
                                                 [prefixDec,maskName]);
                 
-                save_nii(mask,decimalMask{count,1});
+                save_untouch_nii(mask,decimalMask{count,1});
                 
                 count = count +1;
             end
@@ -290,7 +291,7 @@ switch action
                 outputMask = fullfile(parcelPath, subID, outputMaskName);
                 
                 % load the mask
-                smoothMask = load_nii(fullfile(parcelPath, subID, smoothMaskName));
+                smoothMask = load_untouch_nii(fullfile(parcelPath, subID, smoothMaskName));
                 
                 %calculate the voxel num
                 voxelNb = sum((smoothMask.img(:)>threshold));
@@ -300,7 +301,7 @@ switch action
                 smoothMask.img((smoothMask.img(:)<= threshold)) = 0;
                 
                 %% save 
-                save_nii(smoothMask,outputMask);
+                save_untouch_nii(smoothMask,outputMask);
                 
                 info(count).SUBname = subID;
                 info(count).ROIname = outputMaskName;
