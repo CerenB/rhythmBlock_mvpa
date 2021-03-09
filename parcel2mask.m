@@ -195,8 +195,8 @@ switch action
                 mask = fullfile(parcelPath, subID,maskName);
                 image = fullfile(ffxDir,'4D_beta_0.nii');
                 
-                %% realign and reslice the new-roi
-                % so that it is in the same space as your 4D images
+                %% reslice the new-roi
+                % so that it is in the same resolution as your 4D images
                 prefix = 'r';
                 
                 matlabbatch =[];
@@ -218,11 +218,6 @@ switch action
                 realignMaskName = [prefix,maskName];
                 realignMaskPath = fullfile(parcelPath, subID,realignMaskName);
 
-%                 resliceRealignMask = fullfile(parcelPath, subID,[prefix,realignMaskName]);
-%                 resliceRealignMaskName = [prefix, realignMaskName];
-%                 
-%                 %reslice so that the resolution would be same as 4D image
-%                 reslice_nii(realignMask, resliceRealignMask);
                 %% after reslicing, turn it again into binary mask
                 %load roi
                 realignMask = load_untouch_nii(realignMaskPath); % 
