@@ -36,11 +36,35 @@ function opt = getOptionBlockMvpa()
   opt.parallelize.nbWorkers = 1;
   opt.parallelize.killOnExit = true;
 
-
-
   %% DO NOT TOUCH
   opt = checkOptions(opt);
   saveOptions(opt);
+  % we cannot save opt with opt.mvpa, it crashes
+  
+  %% mvpa options
+  opt.mvpa.tool = 'cosmo';
+
+  opt.mvpa.normalization = 'zscore';
+
+  opt.mvpa.child_classifier = @cosmo_classify_libsvm;
+
+  opt.mvpa.feature_selector = @cosmo_anova_feature_selector;
+
+  % take the most responsive xx nb of voxels
+  opt.mvpa.ratioToKeep = [ 520 ]; %100 150 250 400
+
+  % set which type of ffx results you want to use
+  opt.mvpa.map4D = {'beta', 't_maps'};
+
+  % design info
+  opt.mvpa.nbRun = 9;
+  opt.mvpa.nbTrialRepetition = 1;
+
+  % use parcels or NS masks?
+  opt.mvpa.useParcel = 1;
+
+  %define the 4D maps to be used
+  opt.funcFWHM = 2;
 
 
 end

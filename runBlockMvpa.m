@@ -26,13 +26,11 @@ opt = getOptionBlockMvpa();
 
 checkDependencies();
 
-%define the 4D maps to be used
-funcFWHM = 0;
+% get the smoothing parameter for 4D map
+funcFWHM = opt.funcFWHM;
 
 %% roi path
 % use parcels or NS mask?
-useParcel = 1;
-
 
 maskPath = fullfile(fileparts(mfilename('fullpath')), '..', ...
               '..','..', 'RhythmCateg_ROI','neurosynth',...
@@ -51,21 +49,21 @@ roiSource = 'neurosnyth';
 
 % parcels
 % if use parcels, re-writes mask names:
-if useParcel == 1
+if opt.mvpa.useParcel == 1
     maskPath = fullfile(fileparts(mfilename('fullpath')), '..', ...
         '..','..', 'RhythmCateg_ROI','freesurfer');
     
-    maskName = {'rrlauditorycx.nii', 'rrrauditorycx.nii', ...
-                'rrlbasalganglia.nii',...
-                'rrrbasalganglia.nii'};
-%     maskName = {'thres1_s1_dec_rrlauditorycx.nii', ...
-%         'thres1_s1_dec_rrrauditorycx.nii',...
-        %         'rrlbasalganglia.nii',...
-%         'rrrbasalganglia.nii'};
+%     maskName = {'thres5_s1_dec_rlauditorycx.nii', ...
+%                 'thres5_s1_dec_rrauditorycx.nii', ...
+%                 'rlbasalganglia.nii',...
+%                 'rrbasalganglia.nii'}; 
+    maskName = {'rlbasalganglia.nii',...
+                'rrbasalganglia.nii'}; 
 
-    maskLabel = {'leftAud','rightAud', 'leftBG','rightBG'};
+    maskLabel = {'leftBG','rightBG'};
+%     maskLabel = {'leftAud','rightAud', 'leftBG','rightBG'};
     
-    roiSource = 'Aud';
+    roiSource = 'BG';
 end
 
 %% set output folder/name
@@ -74,6 +72,7 @@ savefileMat = fullfile(opt.pathOutput, ...
             'Decoding_', ...
             roiSource, ...
             '_s', num2str(funcFWHM), ...
+            '_vx', num2str(opt.mvpa.ratioToKeep),...
             '_', datestr(now, 'yyyymmdd'), '.mat' ]);
         
 savefileCsv = fullfile(opt.pathOutput, ...
@@ -81,26 +80,10 @@ savefileCsv = fullfile(opt.pathOutput, ...
             'Decoding_', ...
             roiSource, ...
             '_s', num2str(funcFWHM), ...
+            '_vx', num2str(opt.mvpa.ratioToKeep),...
             '_', datestr(now, 'yyyymmdd'), '.csv' ]);   
 
 %% MVPA options
-opt.mvpa.tool = 'cosmo';
-
-opt.mvpa.normalization = 'zscore';
-
-opt.mvpa.child_classifier = @cosmo_classify_libsvm;
-
-opt.mvpa.feature_selector = @cosmo_anova_feature_selector;
-
-% take the most responsive xx nb of voxels
-opt.mvpa.ratioToKeep = [ 110 ];
-
-% set which type of ffx results you want to use
-opt.mvpa.map4D = {'beta', 't_maps'};
-
-% design info
-opt.mvpa.nbRun = 9;
-opt.mvpa.nbTrialRepetition = 1;
 
 % set cosmo mvpa structure
 condLabelNb = [1 2];
@@ -149,7 +132,7 @@ for iGroup = 1:length(group)
                 
                 %choose the mask
                 mask = fullfile(maskPath, maskName{iMask});
-                if useParcel == 1
+                if opt.mvpa.useParcel == 1
                     mask = fullfile(maskPath, subFolder, maskName{iMask});
                 end
                 
@@ -166,7 +149,7 @@ for iGroup = 1:length(group)
                 ds = cosmo_slice(ds, ~zeroMask, 2);
                 
                 %calculate the mask size
-                maskVoxel = size(ds.samples,2)
+                maskVoxel = size(ds.samples,2);
                 
                 % set cosmo structure
                 ds = setCosmoStructure(opt, ds, condLabelNb, condName);
