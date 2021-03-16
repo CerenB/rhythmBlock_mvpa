@@ -45,20 +45,25 @@ prefix = 'r';
 
 % an example below is reslicing the functional ROI from Neurosynth
 % according to the 4D.nii file resolution
-% roiName = 'sma_FDR_0.01.nii';
+% roiName = 'auditory_FDR_0.01.nii';
 roiName = 'premotor_FDR_0.01.nii';
+%roiName = 'sma_FDR_0.01.nii'; 
 roi = fullfile(roiPathRaw,roiName);
 
 % z-score, defines the size of the mask
-% threshold = 7:11;
-threshold = 5:9;
+% threshold = 3:9; % aud
+%threshold = 7:11; % sma
+threshold = 3:9; % premotor
 
 %% inclusive mask, load already make .nii mask (in marsbar)
 useInclusiveMask = 1;
 
-% InclMaskName = 'inclusiveMask_sma_r20-0_-4_58.nii';
-% InclMaskName = 'inclusiveMask_premotorR_r20-50_0_40.nii';
-InclMaskName = 'inclusiveMask_premotorL_r20--54_0_34.nii';
+% InclMaskName = 'inclusiveMask_audL_r26--48_-20_6.nii';
+% InclMaskName = 'inclusiveMask_audR_r26-52_-10_6.nii';
+
+%InclMaskName = 'inclusiveMask_sma_r20-0_-4_58.nii';
+InclMaskName = 'inclusiveMask_premotorR_r20-50_0_40.nii';
+% InclMaskName = 'inclusiveMask_premotorL_r20--54_0_34.nii';
 InclMask = fullfile(roiPath,'..',InclMaskName);
 
 %load mask
@@ -67,7 +72,7 @@ maskInc = load_nii(InclMask);
 maskInc.img = double(maskInc.img);
 
 %define the hemisphere of ROI ! ! ! you have to define it! 
-hemisphere = 'left'; %left, both (for sma)
+hemisphere = 'right'; %left, right or both (for sma)
 
 %% realign + reslicing the masks
 count = 1;
@@ -88,7 +93,7 @@ for iThres = threshold
     voxelNbNaive = sum(naiveRoi.img(:));
     
     %save
-    thresRoiName = ['nativeThres_',num2str(iThres),roiName];
+    thresRoiName = ['nativeThres_',num2str(iThres),'_',roiName];
     thresRoi = fullfile(roiPathDerivatives,thresRoiName);
     save_nii(naiveRoi,thresRoi);
     
@@ -96,7 +101,7 @@ for iThres = threshold
     % so that it is in the same space as your 4D images
     matlabbatch =[];
     matlabbatch{1}.spm.spatial.realign.write.data = {
-        fullfile(ffxDir,'4D_beta_0.nii,1')
+        fullfile(ffxDir,'4D_t_maps_0.nii,1')
         [thresRoi,',1']
         };
     matlabbatch{1}.spm.spatial.realign.write.roptions.which = [2 1];
@@ -106,23 +111,24 @@ for iThres = threshold
     matlabbatch{1}.spm.spatial.realign.write.roptions.prefix = 'r';
     spm_jobman('run',matlabbatch);
     
-    delete(fullfile(ffxDir, ['r4D_beta*', '.nii']));
-    delete(fullfile(ffxDir, ['mean4D_beta*', '.nii']));
+    delete(fullfile(ffxDir, ['r4D_t_maps*', '.nii']));
+    delete(fullfile(ffxDir, ['mean4D_t_maps*', '.nii']));
     
     % call the realigned image
     realignRoiName = [prefix,thresRoiName];
     realignRoi = fullfile(roiPathDerivatives,realignRoiName);
     
-    resliceRealignRoiName =[prefix,realignRoiName];
-    resliceRealignRoi = fullfile(roiPathDerivatives,resliceRealignRoiName);
-    
-    %reslice so that the resolution would be same as 4D image
-    %reslice_nii(oldRoi,newRoi, [mm mm mm];
-    reslice_nii(realignRoi, resliceRealignRoi,[2.6,2.6,2.6]);
+%     resliceRealignRoiName =[prefix,realignRoiName];
+%     resliceRealignRoi = fullfile(roiPathDerivatives,resliceRealignRoiName);
+%     
+%     %reslice so that the resolution would be same as 4D image
+%     %reslice_nii(oldRoi,newRoi, [mm mm mm];
+%     reslice_nii(realignRoi, resliceRealignRoi,[2.6,2.6,2.6]);
     
     %% after reslicing, turn it again into binary mask
     %load roi
-    mask = load_nii(resliceRealignRoi);
+%     mask = load_nii(resliceRealignRoi);
+    mask = load_nii(realignRoi);
     
     % binarise
     mask.img(mask.img <= 0.1) = 0.0;
@@ -130,10 +136,12 @@ for iThres = threshold
     voxelNbBefore = sum(mask.img(:));
     
     %save
-    save_nii(mask,resliceRealignRoi);
+    binaryrRealignRoiName = ['bin_',realignRoiName];
+    binaryrRealignRoi = fullfile(roiPathDerivatives,binaryrRealignRoiName);
+    save_nii(mask,binaryrRealignRoi);
     
     %% use inclusive mask to select only SMA/premotor/...
-    outputMaskName = [hemisphere, resliceRealignRoiName];
+    outputMaskName = [hemisphere, binaryrRealignRoiName];
     outputMask = fullfile(roiPathDerivatives,outputMaskName);
     
     if useInclusiveMask == 1
