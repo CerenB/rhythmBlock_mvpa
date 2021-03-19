@@ -1,6 +1,6 @@
 % (C) Copyright 2019 CPP BIDS SPM-pipeline developpers
 
-function opt = getOptionBlockMvpa()
+function opt = getOptionBlockSearchlight()
   % opt = getOption()
   % returns a structure that contains the options chosen by the user to run
   % slice timing correction, pre-processing, FFX, RFX.
@@ -12,8 +12,10 @@ function opt = getOptionBlockMvpa()
   % group of subjects to analyze
   opt.groups = {''};
   % suject to run in each group
-  opt.subjects = {'001', '002', '003', '004', '005', '006', '007', ...
-                  '008', '009', '010', '011'};
+  opt.subjects = {'001'};
+
+  %               '001', '002', '003', '004', '005', '006', '007', ...
+  %                   '008', '009', '010', '011'
 
   % Uncomment the lines below to run preprocessing
   % - don't use realign and unwarp

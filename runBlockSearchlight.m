@@ -5,25 +5,25 @@ function info = runBlockSearchlight
   %% define paths
   % spm - for now
   warning('off');
-  addpath(genpath('/Users/battal/Documents/MATLAB/spm12'));
+  addpath(genpath('~/Documents/MATLAB/spm12'));
   % cosmo
-  cosmo = '/Users/battal/Documents/MATLAB/CoSMoMVPA';
+  cosmo = '~/Documents/MATLAB/CoSMoMVPA';
   addpath(genpath(cosmo));
   cosmo_warning('once');
 
   % libsvm
-  libsvm = '/Users/battal/Documents/MATLAB/libsvm';
+  libsvm = '~/Documents/MATLAB/libsvm';
   addpath(genpath(libsvm));
   % verify it worked.
   cosmo_check_external('libsvm'); % should not give an error
 
   % add cpp-spm
-  cppSPM = '/Users/battal/Documents/GitHub/CPPLab/CPP_SPM';
+  cppSPM = '~/Documents/GitHub/CPPLab/CPP_SPM';
   addpath(genpath(fullfile(cppSPM, 'src')));
   addpath(genpath(fullfile(cppSPM, 'lib')));
 
   % get options
-  opt = getOptionBlockMvpa();
+  opt = getOptionBlockSearchlight();
 
   checkDependencies();
 
@@ -35,14 +35,14 @@ function info = runBlockSearchlight
   roiSource = 'wholeBrain';
 
   % mask name to decode
-  maskName = {'mask.nii'};
+  maskName = 'mask.nii';
 
   %% set output folder/name
   savefileMat = fullfile(opt.pathOutput, ...
                          [opt.taskName, ...
-                          'Decoding_', ...
+                          '_SL_', ...
                           roiSource, ...
-                          '_s', num2str(funcFWHM), ...
+                          '_FWHM-', num2str(funcFWHM), ...
                           '_vx', num2str(opt.mvpa.searchlightVoxelNb), ...
                           '_', datestr(now, 'yyyymmdd'), '.mat']);
 
@@ -71,94 +71,92 @@ function info = runBlockSearchlight
   [group, opt] = getData(opt);
 
   count = 1;
-  for iGroup = 1:length(group)
 
-    for iSub = 1:group(iGroup).numSub
+  for iSub = 1:group(1).numSub
 
-      % get FFX path
-      subID = group(iGroup).subNumber{iSub};
-      ffxDir = getFFXdir(subID, funcFWHM, opt);
+    % get FFX path
+    subID = group(iGroup).subNumber{iSub};
+    ffxDir = getFFXdir(subID, funcFWHM, opt);
 
-      %         % get subject folder name
-      %         subFolder = ['sub-', opt.subjects{iSub}];
+    %         % get subject folder name
+    %         subFolder = ['sub-', opt.subjects{iSub}];
 
-      for iImage = 1:length(opt.mvpa.map4D)
+    for iImage = 1:length(opt.mvpa.map4D)
 
-        % 4D image
-        imageName = ['4D_', opt.mvpa.map4D{iImage}, ...
-                     '_', num2str(funcFWHM), '.nii'];
-        image = fullfile(ffxDir, imageName);
+      % 4D image
+      imageName = ['4D_', opt.mvpa.map4D{iImage}, ...
+                   '_', num2str(funcFWHM), '.nii'];
+      image = fullfile(ffxDir, imageName);
 
-        % mask
-        mask = fullfile(ffxDir, maskName);
+      % mask
+      mask = fullfile(ffxDir, maskName);
 
-        % load cosmo input
-        ds = cosmo_fmri_dataset(image, 'mask', mask);
+      % load cosmo input
+      ds = cosmo_fmri_dataset(image, 'mask', mask);
 
-        % Getting rid off zeros
-        zeroMask = all(ds.samples == 0, 1);
+      % Getting rid off zeros
+      zeroMask = all(ds.samples == 0, 1);
 
-        ds = cosmo_slice(ds, ~zeroMask, 2);
+      ds = cosmo_slice(ds, ~zeroMask, 2);
 
-        % calculate the mask size
-        maskVoxel = size(ds.samples, 2);
+      % calculate the mask size
+      maskVoxel = size(ds.samples, 2);
 
-        % set cosmo structure
-        ds = setCosmoStructure(opt, ds, condLabelNb, condName);
+      % set cosmo structure
+      ds = setCosmoStructure(opt, ds, condLabelNb, condName);
 
-        % slice the ds according to your targers (choose your
-        % train-test conditions
-        ds = cosmo_slice(ds, ds.sa.targets == 1 | ds.sa.targets == 2);
+      % slice the ds according to your targers (choose your
+      % train-test conditions
+      ds = cosmo_slice(ds, ds.sa.targets == 1 | ds.sa.targets == 2);
 
-        % remove constant features
-        ds = cosmo_remove_useless_data(ds);
+      % remove constant features
+      ds = cosmo_remove_useless_data(ds);
 
-        % partitioning, for test and training : cross validation
-        % can be different e.g. cosmo_oddeven_partitioner(ds_per_run)
-        opt.mvpa.partitions = cosmo_nfold_partitioner(ds);
+      % partitioning, for test and training : cross validation
+      % can be different e.g. cosmo_oddeven_partitioner(ds_per_run)
+      opt.mvpa.partitions = cosmo_nfold_partitioner(ds);
 
-        % define a neightborhood
-        nbrhood = cosmo_spherical_neighborhood(ds, 'count', ...
-                                               opt.mvpa.searchlightVoxelNb);
+      % define a neightborhood
+      nbrhood = cosmo_spherical_neighborhood(ds, 'count', ...
+                                             opt.mvpa.searchlightVoxelNb);
 
-        % Run the searchlight
-        svm_results = cosmo_searchlight(ds, ...
-                                        nbrhood, ...
-                                        opt.mvpa.measure, ...
-                                        opt.mvpa);
+      % Run the searchlight
+      svm_results = cosmo_searchlight(ds, ...
+                                      nbrhood, ...
+                                      opt.mvpa.measure, ...
+                                      opt.mvpa);
 
-        % store the relevant info
-        info(count).subID = subID;
-        info(count).maskPath = mask;
-        info(count).maskVoxNb = maskVoxel;
-        info(count).searchlightVoxelNb = opt.mvpa.searchlightVoxelNb;
-        info(count).image = opt.mvpa.map4D{iImage};
-        info(count).ffxSmooth = funcFWHM;
-        info(count).roiSource = roiSource;
-        info(count).imagePath = image;
-        info(count).decodingCondition = decodingCondition;
+      % store the relevant info
+      info(count).subID = subID;
+      info(count).maskPath = mask;
+      info(count).maskVoxNb = maskVoxel;
+      info(count).searchlightVoxelNb = opt.mvpa.searchlightVoxelNb;
+      info(count).image = opt.mvpa.map4D{iImage};
+      info(count).ffxSmooth = funcFWHM;
+      info(count).roiSource = roiSource;
+      info(count).imagePath = image;
+      info(count).decodingCondition = decodingCondition;
 
-        count = count + 1;
+      count = count + 1;
 
-        % Store results to disc
-        savingResultFile = fullfile(opt.pathOutput, ...
-                                    [opt.taskName, ...
-                                     'searchlight', ...
-                                     roiSource, ...
-                                     '_s', num2str(funcFWHM), ...
-                                     '_vx', num2str(opt.mvpa.searchlightVoxelNb), ...
-                                     '_', datestr(now, 'yyyymmdd'), 'nii']);
-        cosmo_map2fmri(svm_results, savingResultFile);
+      % Store results to disc
+      savingResultFile = fullfile(opt.pathOutput, ...
+                                  [['sub-', subID], ...
+                                   '_task-', opt.taskName, ...
+                                   '_SL_', ...
+                                   roiSource, ...
+                                   '_FWHM-', num2str(funcFWHM), ...
+                                   '_vx', num2str(opt.mvpa.searchlightVoxelNb), ...
+                                   '_', datestr(now, 'yyyymmdd'), '.nii']);
+      cosmo_map2fmri(svm_results, savingResultFile);
 
-        fprintf(['Sub'  subID ' is  being processed ....\n\n\n']);
+      fprintf(['Sub'  subID ' is  being processed ....\n\n\n']);
 
-      end
     end
-    %% save output
-    % mat file
-    save(savefileMat, 'accu');
-
   end
+  %% save output
+  % mat file
+  save(savefileMat, 'accu');
 
 end
 
