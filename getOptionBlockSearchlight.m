@@ -1,9 +1,8 @@
 % (C) Copyright 2019 CPP BIDS SPM-pipeline developpers
 
 function opt = getOptionBlockSearchlight()
-  % opt = getOption()
   % returns a structure that contains the options chosen by the user to run
-  % slice timing correction, pre-processing, FFX, RFX.
+  % searchlight.
 
   if nargin < 1
     opt = [];
@@ -44,9 +43,6 @@ function opt = getOptionBlockSearchlight()
   % we cannot save opt with opt.mvpa, it crashes
 
   %% mvpa options
-
-  % use parcels or NS masks?
-  opt.mvpa.useParcel = 0;
 
   % define the 4D maps to be used
   opt.funcFWHM = 2;

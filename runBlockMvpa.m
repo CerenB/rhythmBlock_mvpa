@@ -4,20 +4,20 @@ function accu = runBlockMvpa
   %% define paths
   % spm - for now
   warning('off');
-  addpath(genpath('/Users/battal/Documents/MATLAB/spm12'));
+  addpath(genpath('~/Documents/MATLAB/spm12'));
   % cosmo
-  cosmo = '/Users/battal/Documents/MATLAB/CoSMoMVPA';
+  cosmo = '~/Documents/MATLAB/CoSMoMVPA';
   addpath(genpath(cosmo));
   cosmo_warning('once');
 
   % libsvm
-  libsvm = '/Users/battal/Documents/MATLAB/libsvm';
+  libsvm = '~/Documents/MATLAB/libsvm';
   addpath(genpath(libsvm));
   % verify it worked.
   cosmo_check_external('libsvm'); % should not give an error
 
   % add cpp-spm
-  cppSPM = '/Users/battal/Documents/GitHub/CPPLab/CPP_SPM';
+  cppSPM = '~/Documents/GitHub/CPPLab/CPP_SPM';
   addpath(genpath(fullfile(cppSPM, 'src')));
   addpath(genpath(fullfile(cppSPM, 'lib')));
 

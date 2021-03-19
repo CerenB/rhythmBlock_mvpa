@@ -75,12 +75,10 @@ function info = runBlockSearchlight
   for iSub = 1:group(1).numSub
 
     % get FFX path
-    subID = group(iGroup).subNumber{iSub};
+    subID = group(1).subNumber{iSub};
     ffxDir = getFFXdir(subID, funcFWHM, opt);
 
-    %         % get subject folder name
-    %         subFolder = ['sub-', opt.subjects{iSub}];
-
+    % loop through different 4D images
     for iImage = 1:length(opt.mvpa.map4D)
 
       % 4D image
