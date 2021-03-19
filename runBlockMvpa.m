@@ -40,12 +40,19 @@ maskPath = fullfile(fileparts(mfilename('fullpath')), '..', ...
                'functional', 'derivatives');
            
 % masks to decode           
-maskName = {'leftrrthres_7premotor_FDR_0.01.nii', ...
-           'rightrrthres_7premotor_FDR_0.01.nii',...
-           'rrthres_10sma_FDR_0.01.nii'};
+% maskName = {'leftrrthres_7premotor_FDR_0.01.nii', ...
+%            'rightrrthres_7premotor_FDR_0.01.nii',...
+%            'rrthres_10sma_FDR_0.01.nii'};
+maskName = {'leftbin_rnativeThres_7_auditory_FDR_0.01.nii', ...
+           'rightbin_rnativeThres_6_auditory_FDR_0.01.nii',...
+           'rrthres_7sma_FDR_0.01.nii', ...
+           'leftrrthres_5premotor_FDR_0.01.nii', ...
+           'rightbin_rnativeThres_5_premotor_FDR_0.01.nii'};     
+
        
-% use in output roi name       
-maskLabel = {'rightPremotor', 'leftPremotor','SMA'};      
+% use in output roi name  
+maskLabel = {'leftAud','rightAud','SMA','leftPremotor','rightPremotor'};  
+% maskLabel = {'leftPremotor','rightPremotor', 'SMA'};      
 
 
 % parcels
@@ -60,11 +67,8 @@ if opt.mvpa.useParcel == 1
     maskName = {'thres5_s1_dec_rlauditorycx.nii', ...
                 'thres5_s1_dec_rrauditorycx.nii', ...
                 'rlbasalganglia.nii',...
-                'rrbasalganglia.nii'}; 
-%     maskName = {'rlbasalganglia.nii',...
-%                 'rrbasalganglia.nii'}; 
+                'rrbasalganglia.nii'};
 
-%     maskLabel = {'leftBG','rightBG'};
     maskLabel = {'leftAud','rightAud', 'leftBG','rightBG'};
 
 end
@@ -138,6 +142,7 @@ for iGroup = 1:length(group)
                 if opt.mvpa.useParcel == 1
                     mask = fullfile(maskPath, subFolder, maskName{iMask});
                 end
+               
                 
                 % 4D image
                 imageName = ['4D_', opt.mvpa.map4D{iImage},'_', num2str(funcFWHM), '.nii'];
@@ -169,7 +174,13 @@ for iGroup = 1:length(group)
                 
                 % define the voxel number for feature selection
                 % set ratio to keep depending on the ROI dimension
-                opt.mvpa.feature_selection_ratio_to_keep = opt.mvpa.ratioToKeep;
+                % if SMA, double the voxel number
+                if strcmpi(maskLabel{iMask},'sma')
+                   opt.mvpa.feature_selection_ratio_to_keep = 2 * opt.mvpa.ratioToKeep;
+                else
+                   opt.mvpa.feature_selection_ratio_to_keep = opt.mvpa.ratioToKeep;
+                end
+                
                 
                 % ROI mvpa analysis
                 [pred, accuracy] = cosmo_crossvalidate(ds, ...
