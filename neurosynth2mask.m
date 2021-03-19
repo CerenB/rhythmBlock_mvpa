@@ -62,8 +62,8 @@ useInclusiveMask = 1;
 % InclMaskName = 'inclusiveMask_audR_r26-52_-10_6.nii';
 
 %InclMaskName = 'inclusiveMask_sma_r20-0_-4_58.nii';
-InclMaskName = 'inclusiveMask_premotorR_r20-50_0_40.nii';
-% InclMaskName = 'inclusiveMask_premotorL_r20--54_0_34.nii';
+% InclMaskName = 'inclusiveMask_premotorR_r20-50_0_40.nii';
+InclMaskName = 'inclusiveMask_premotorL_r20--54_0_34.nii';
 InclMask = fullfile(roiPath,'..',InclMaskName);
 
 %load mask
@@ -72,7 +72,7 @@ maskInc = load_nii(InclMask);
 maskInc.img = double(maskInc.img);
 
 %define the hemisphere of ROI ! ! ! you have to define it! 
-hemisphere = 'right'; %left, right or both (for sma)
+hemisphere = 'left'; %left, right or both (for sma)
 
 %% realign + reslicing the masks
 count = 1;
@@ -117,13 +117,6 @@ for iThres = threshold
     % call the realigned image
     realignRoiName = [prefix,thresRoiName];
     realignRoi = fullfile(roiPathDerivatives,realignRoiName);
-    
-%     resliceRealignRoiName =[prefix,realignRoiName];
-%     resliceRealignRoi = fullfile(roiPathDerivatives,resliceRealignRoiName);
-%     
-%     %reslice so that the resolution would be same as 4D image
-%     %reslice_nii(oldRoi,newRoi, [mm mm mm];
-%     reslice_nii(realignRoi, resliceRealignRoi,[2.6,2.6,2.6]);
     
     %% after reslicing, turn it again into binary mask
     %load roi
