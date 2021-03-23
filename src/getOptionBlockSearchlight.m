@@ -29,6 +29,10 @@ function opt = getOptionBlockSearchlight()
   opt.derivativesDir = fullfile(opt.dataDir, '..', 'derivatives', 'cpp_spm');
 
   opt.pathOutput = fullfile(opt.dataDir, '..', 'derivatives', 'cosmoMvpa');
+  
+  % multivariate
+  opt.model.file = fullfile(fileparts(mfilename('fullpath')), '..', ...
+                            'model', 'model-RhythmBlockDecoding1_smdl.json');
 
   % task to analyze
   opt.taskName = 'RhythmBlock';
