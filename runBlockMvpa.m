@@ -238,26 +238,35 @@ function accu = runBlockMvpa
 
 end
 
-function ds = setCosmoStructure(opt, ds, condLabelNb, condName)
+function ds = setCosmoStructure(opt, ds, condLabelNb, condLabelName)
   % sets up the target, chunk, labels by stimuli condition labels, runs,
   % number labels.
 
+  
+  % design info from opt
+  nbRun = opt.mvpa.nbRun;
+  betasPerCondition = opt.mvpa.nbTrialRepetition;
+  
   % chunk (runs), target (condition), labels (condition names)
-  trialsPerRun = length(condLabelNb) * opt.mvpa.nbTrialRepetition;
-
-  chunks = repmat([1:opt.mvpa.nbRun]', 1, opt.mvpa.nbTrialRepetition)';
+  conditionPerRun = length(condLabelNb);
+  betasPerRun = betasPerCondition * conditionPerRun;
+  
+  
+  chunks = repmat((1:nbRun)', 1, betasPerRun);
   chunks = chunks(:);
-  chunks = repmat(chunks, trialsPerRun, 1);
-
-  targets = repmat(condLabelNb', 1, opt.mvpa.nbRun)';
+  
+  targets = repmat(condLabelNb', 1, nbRun)';
   targets = targets(:);
+  targets = repmat(targets, betasPerCondition, 1);
 
-  condName = repmat(condName', 1, opt.mvpa.nbRun)';
-  condName = condName(:);
+  condLabelName = repmat(condLabelName', 1, nbRun)';
+  condLabelName = condLabelName(:);
+  condLabelName = repmat(condLabelName, betasPerCondition, 1);
 
+  % assign our 4D image design into cosmo ds git
   ds.sa.targets = targets;
   ds.sa.chunks = chunks;
-  ds.sa.labels = condName;
+  ds.sa.labels = condLabelName;
 
   % figure; imagesc(ds.sa.targets);
 
