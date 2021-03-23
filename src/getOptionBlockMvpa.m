@@ -11,9 +11,8 @@ function opt = getOptionBlockMvpa()
   % group of subjects to analyze
   opt.groups = {''};
   % suject to run in each group
-  opt.subjects = {'001', '002', '003', '004'};
-  % , '005', '006', '007', ...
-%                   '008', '009', '010', '011'
+  opt.subjects = {'001', '002', '003', '004', '005', '006', '007', ...
+                  '008', '009', '010', '011'};
 
   % Uncomment the lines below to run preprocessing
   % - don't use realign and unwarp
@@ -28,8 +27,8 @@ function opt = getOptionBlockMvpa()
   opt.derivativesDir = fullfile(opt.dataDir, '..', 'derivatives', 'cpp_spm');
 
   opt.pathOutput = fullfile(opt.dataDir, '..', 'derivatives', 'cosmoMvpa');
-  
-    % multivariate
+
+  % multivariate
   opt.model.file = fullfile(fileparts(mfilename('fullpath')), '..', ...
                             'model', 'model-RhythmBlockDecoding2_smdl.json');
 
