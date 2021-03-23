@@ -1,6 +1,5 @@
-
-*.json
-
 .DS_Store
 
 *.m~
+
+src/cfg/
