@@ -36,7 +36,7 @@ function accu = runBlockMvpa
   roiSource = 'neurosnyth';
 
   maskPath = fullfile(fileparts(mfilename('fullpath')), '..', ...
-                      '..', '..', 'RhythmCateg_ROI', 'neurosynth', ...
+                      '..', '..', '..', 'RhythmCateg_ROI', 'neurosynth', ...
                       'functional', 'derivatives');
 
   % masks to decode
@@ -60,7 +60,7 @@ function accu = runBlockMvpa
     roiSource = 'freesurfer';
 
     maskPath = fullfile(fileparts(mfilename('fullpath')), '..', ...
-                        '..', '..', 'RhythmCateg_ROI', 'freesurfer');
+                        '..', '..', '..', 'RhythmCateg_ROI', 'freesurfer');
 
     maskName = {'thres5_s1_dec_rlauditorycx.nii', ...
                 'thres5_s1_dec_rrauditorycx.nii', ...
@@ -113,7 +113,7 @@ function accu = runBlockMvpa
                 'imagePath', []);
 
   % get dataset info
-  [~, opt] = getData(opt);
+  %[~, opt] = getData(opt);
 
   count = 1;
 

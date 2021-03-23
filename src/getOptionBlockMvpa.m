@@ -23,7 +23,7 @@ function opt = getOptionBlockMvpa()
 
   % The directory where the data are located
   opt.dataDir = fullfile(fileparts(mfilename('fullpath')), ...
-                         '..', '..',  'raw');
+                         '..', '..', '..', 'raw');
   opt.derivativesDir = fullfile(opt.dataDir, '..', 'derivatives', 'cpp_spm');
 
   opt.pathOutput = fullfile(opt.dataDir, '..', 'derivatives', 'cosmoMvpa');
