@@ -77,22 +77,22 @@ function accu = runBlockMvpa
                           'Decoding_', ...
                           roiSource, ...
                           '_s', num2str(funcFWHM), ...
-                          '_vx', num2str(opt.mvpa.ratioToKeep), ...
-                          '_', datestr(now, 'yyyymmdd'), '.mat']);
+                          '_ratio', num2str(opt.mvpa.ratioToKeep * 100), ...
+                          '_', datestr(now, 'yyyymmddHHMM'), '.mat']);
 
   savefileCsv = fullfile(opt.pathOutput, ...
                          [opt.taskName, ...
                           'Decoding_', ...
                           roiSource, ...
                           '_s', num2str(funcFWHM), ...
-                          '_vx', num2str(opt.mvpa.ratioToKeep), ...
-                          '_', datestr(now, 'yyyymmdd'), '.csv']);
+                          '_ratio', num2str(opt.mvpa.ratioToKeep * 100), ...
+                          '_', datestr(now, 'yyyymmddHHMM'), '.csv']);
 
   %% MVPA options
 
   % set cosmo mvpa structure
   condLabelNb = [1 2];
-  condName = {'simple', 'complex'};
+  condLabelName = {'simple', 'complex'};
   decodingCondition = 'simpleVscomplex';
 
   %% let's get going!
@@ -111,9 +111,6 @@ function accu = runBlockMvpa
                 'decodingCondition', [], ...
                 'permutation', [], ...
                 'imagePath', []);
-
-  % get dataset info
-  %[~, opt] = getData(opt);
 
   count = 1;
 
@@ -145,14 +142,10 @@ function accu = runBlockMvpa
 
         % Getting rid off zeros
         zeroMask = all(ds.samples == 0, 1);
-
         ds = cosmo_slice(ds, ~zeroMask, 2);
 
-        % calculate the mask size
-        maskVoxel = size(ds.samples, 2);
-
         % set cosmo structure
-        ds = setCosmoStructure(opt, ds, condLabelNb, condName);
+        ds = setCosmoStructure(opt, ds, condLabelNb, condLabelName);
 
         % slice the ds according to your targers (choose your
         % train-test conditions
@@ -161,49 +154,61 @@ function accu = runBlockMvpa
         % remove constant features
         ds = cosmo_remove_useless_data(ds);
 
+        % calculate the mask size
+        maskVoxel = size(ds.samples, 2);
+
         % partitioning, for test and training : cross validation
         partitions = cosmo_nfold_partitioner(ds);
 
         % define the voxel number for feature selection
         % set ratio to keep depending on the ROI dimension
         % if SMA, double the voxel number
-        if strcmpi(maskLabel{iMask}, 'sma')
-          opt.mvpa.feature_selection_ratio_to_keep = 2 * opt.mvpa.ratioToKeep;
-        else
-          opt.mvpa.feature_selection_ratio_to_keep = opt.mvpa.ratioToKeep;
-        end
+%         if strcmpi(maskLabel{iMask}, 'sma')
+%            opt.mvpa.feature_selection_ratio_to_keep = 2 * opt.mvpa.ratioToKeep;
+%         else
+%            opt.mvpa.feature_selection_ratio_to_keep = opt.mvpa.ratioToKeep;
+%         end
+        
+        % use the ratios, instead of the voxel number:
+        opt.mvpa.feature_selection_ratio_to_keep = opt.mvpa.ratioToKeep;
 
         % ROI mvpa analysis
         [pred, accuracy] = cosmo_crossvalidate(ds, ...
-                                               @cosmo_meta_feature_selection_classifier, ...
-                                               partitions, opt.mvpa);
+                                   @cosmo_meta_feature_selection_classifier, ...
+                                   partitions, opt.mvpa);
+        
+        
 
-        %% PERMUTATION PART
-        % number of iterations
-        nbIter = 100;
+        %%
 
-        % allocate space for permuted accuracies
-        acc0 = zeros(nbIter, 1);
-
-        % make a copy of the dataset
-        ds0 = ds;
-
-        % for _niter_ iterations, reshuffle the labels and compute accuracy
-        % Use the helper function cosmo_randomize_targets
-        for k = 1:nbIter
-          ds0.sa.targets = cosmo_randomize_targets(ds);
-          [~, acc0(k)] = cosmo_crossvalidate(ds0, @cosmo_meta_feature_selection_classifier, ...
-                                             partitions, opt.mvpa);
-        end
-
-        p = sum(accuracy < acc0) / nbIter;
-        fprintf('%d permutations: accuracy=%.3f, p=%.4f\n', nbIter, accuracy, p);
+%         ratios_to_keep = .05:.05:.95;
+%         nratios = numel(ratios_to_keep);
+% 
+%         accs = zeros(nratios, 1);
+% 
+%         for k = 1:nratios
+%           opt.mvpa.feature_selection_ratio_to_keep = ratios_to_keep(k);
+% 
+%           [pred, acc] = cosmo_crossvalidate(ds, ...
+%                                             @cosmo_meta_feature_selection_classifier, ...
+%                                             partitions, opt.mvpa);
+%           accs(k) = acc;
+%         end
+% 
+%         plot(ratios_to_keep, accs);
+%         xlabel('ratio of selected feaures');
+%         ylabel('classification accuracy');
+% 
+%         accuracy = max(accs);
+%         maxRatio = ratios_to_keep(accs == max(accs));
 
         %% store output
         accu(count).subID = subID;
         accu(count).mask = maskLabel{iMask};
         accu(count).maskVoxNb = maskVoxel;
         accu(count).choosenVoxNb = opt.mvpa.feature_selection_ratio_to_keep;
+       % accu(count).choosenVoxNb = round(maskVoxel * maxRatio);
+       % accu(count).maxRatio = maxRatio;
         accu(count).image = opt.mvpa.map4D{iImage};
         accu(count).ffxSmooth = funcFWHM;
         accu(count).accuracy = accuracy;
@@ -211,8 +216,35 @@ function accu = runBlockMvpa
         accu(count).imagePath = image;
         accu(count).roiSource = roiSource;
         accu(count).decodingCondition = decodingCondition;
-        accu(count).permutation = acc0';
 
+        %% PERMUTATION PART
+        if opt.mvpa.permutate  == 1
+          % number of iterations
+          nbIter = 100;
+
+          % allocate space for permuted accuracies
+          acc0 = zeros(nbIter, 1);
+
+          % make a copy of the dataset
+          ds0 = ds;
+
+          % for _niter_ iterations, reshuffle the labels and compute accuracy
+          % Use the helper function cosmo_randomize_targets
+          for k = 1:nbIter
+            ds0.sa.targets = cosmo_randomize_targets(ds);
+            [~, acc0(k)] = cosmo_crossvalidate(ds0, ...
+                                               @cosmo_meta_feature_selection_classifier, ...
+                                               partitions, opt.mvpa);
+          end
+
+          p = sum(accuracy < acc0) / nbIter;
+          fprintf('%d permutations: accuracy=%.3f, p=%.4f\n', nbIter, accuracy, p);
+
+          % save permuted accuracies
+          accu(count).permutation = acc0';
+        end
+
+        % increase the counter and allons y!
         count = count + 1;
 
         fprintf(['Sub'  subID ' - area: ' maskLabel{iMask} ...
