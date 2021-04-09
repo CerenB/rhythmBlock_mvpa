@@ -8,8 +8,6 @@ function opt = getOptionBlockMvpa()
     opt = [];
   end
 
-  % group of subjects to analyze
-  opt.groups = {''};
   % suject to run in each group
   opt.subjects = {'001', '002', '003', '004', '005', '006', '007', ...
                   '008', '009', '010', '011'};
@@ -23,7 +21,7 @@ function opt = getOptionBlockMvpa()
 
   % The directory where the data are located
   opt.dataDir = fullfile(fileparts(mfilename('fullpath')), ...
-                         '..', '..', '..', 'raw');
+                         '..', '..', '..', 'data','raw');
   opt.derivativesDir = fullfile(opt.dataDir, '..', 'derivatives', 'cpp_spm');
 
   opt.pathOutput = fullfile(opt.dataDir, '..', 'derivatives', 'cosmoMvpa');
@@ -35,8 +33,8 @@ function opt = getOptionBlockMvpa()
   % task to analyze
   opt.taskName = 'RhythmBlock';
 
-  opt.parallelize.do = true;
-  opt.parallelize.nbWorkers = 4;
+  opt.parallelize.do = false;
+  opt.parallelize.nbWorkers = 1;
   opt.parallelize.killOnExit = true;
 
   %% DO NOT TOUCH
@@ -53,7 +51,7 @@ function opt = getOptionBlockMvpa()
   opt.funcFWHM = 2;
 
   % take the most responsive xx nb of voxels
-  opt.mvpa.ratioToKeep = [100]; % 100 150 250 350 420
+  opt.mvpa.ratioToKeep = 0.95; % 100 150 250 350 420
 
   % set which type of ffx results you want to use
   opt.mvpa.map4D = {'beta', 't_maps'};
@@ -64,8 +62,11 @@ function opt = getOptionBlockMvpa()
 
   % cosmo options
   opt.mvpa.tool = 'cosmo';
-  opt.mvpa.normalization = 'zscore';
+  % opt.mvpa.normalization = 'zscore';
   opt.mvpa.child_classifier = @cosmo_classify_libsvm;
   opt.mvpa.feature_selector = @cosmo_anova_feature_selector;
+
+  % permute the accuracies ?
+  opt.mvpa.permutate = 0;
 
 end
