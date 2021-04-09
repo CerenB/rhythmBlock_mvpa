@@ -7,8 +7,12 @@ library(Rmisc)
 
 
 #######################################################
+#pathCosmoResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/derivatives/cosmoMvpa/neurosynth-MNI-10beta-bestRatio4Decoding'
+
 #pathCosmoResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/derivatives/cosmoMvpa/before16032021'
-pathCosmoResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/derivatives/cosmoMvpa/'
+#pathCosmoResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/derivatives/cosmoMvpa/neurosynth-MNI-10beta'
+
+pathCosmoResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/derivatives/cosmoMvpa/neurosynth-MNI-10beta-takeAllROI_ratio95'
 
 ########
 
@@ -66,8 +70,7 @@ mvpa$mask <- ifelse(mvpa$mask == 'leftAud', 'audL',
                                 ifelse(mvpa$mask == 'leftBG', 'bgL', 
                                        ifelse(mvpa$mask == 'rightBG','bgR',
                                               ifelse(mvpa$mask == 'leftPremotor', 'preL',
-
-                                                                                                          ifelse(mvpa$mask == 'rightPremotor','preR','SMA'))))))
+                                                    ifelse(mvpa$mask == 'rightPremotor','preR','SMA'))))))
 # sma roi consist of left/right hemispheres but for plotting 
 # we can show under the same vx size as the others
 # better way would be dividing the masks an re-run the decoding
@@ -84,7 +87,7 @@ df <- summarySE(data = mvpa,
 #################
 pd <- position_dodge(0.1)
 
-filename <- paste(pathCosmoResults, '/plot/', 'Decoding_SimpleVsComplex-AllCondition.png', sep = '')
+filename <- paste(pathCosmoResults, '/plot/', 'Decoding_SimpleVsComplex-AllCondition-5Beta.png', sep = '')
 title <- paste('Simple vs Complex Rhythm Decoding ')
 
 
@@ -109,6 +112,53 @@ fig <- ggplot(df, aes(x = reorder(mask, roi_order), y = accuracy)) +
 fig
 
 ggsave(filename, device="png", units="in", width=18, height=9.08, dpi=300)  
+
+
+
+
+###### figure for best ratio for decoding
+#################################### destroy afterwards
+# summary stats
+df <- summarySE(data = mvpa,
+                groupvars=c('mask', 'roi_order', 'image','ffxSmooth'),
+                measurevar='accuracy')
+
+
+#################
+pd <- position_dodge(0.1)
+
+filename <- paste(pathCosmoResults, '/plot/', 'Decoding_SimpleVsComplex-AllCondition-Ratio95.png', sep = '')
+title <- paste('Simple vs Complex Rhythm Decoding ')
+
+
+fig <- ggplot(df, aes(x = reorder(mask, roi_order), y = accuracy)) +
+  geom_point(data = mvpa, aes(group=subID), pos=pd, size=2.5, color=grey(0.8)) +
+  geom_point(size=3,col='black') +
+  geom_hline(yintercept=c(.5), linetype="dotted", colour="red", size=.5) +
+  facet_grid(vars(image,ffxSmooth)) +
+  geom_errorbar(aes(ymin=accuracy-se,ymax=accuracy+se),size=1,width=0.2) +
+  scale_y_continuous(limits=c(0, .90)) +
+  xlab('ROIs')+
+  ylab('classification acc.')+
+  ggtitle(title)+
+  theme_cowplot(font_size = 14,
+                font_family = "",
+                line_size = 0.3,
+                rel_small = 10/12,
+                rel_tiny = 10/12,
+                rel_large = 14/12)
+
+
+fig
+
+ggsave(filename, device="png", units="in", width=9, height=9.08, dpi=300)
+
+
+
+
+
+
+
 
 
 
