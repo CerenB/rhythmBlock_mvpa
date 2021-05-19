@@ -7,12 +7,8 @@ library(Rmisc)
 
 
 #######################################################
-#pathCosmoResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/derivatives/cosmoMvpa/neurosynth-MNI-10beta-bestRatio4Decoding'
-
-#pathCosmoResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/derivatives/cosmoMvpa/before16032021'
-#pathCosmoResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/derivatives/cosmoMvpa/neurosynth-MNI-10beta'
-
-pathCosmoResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/derivatives/cosmoMvpa/neurosynth-MNI-10beta-takeAllROI_ratio95'
+pathCosmoResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/data/derivatives/cosmoMvpa/neurosynth-freesurfer-2beta-diffVoxelNb'
+#pathCosmoResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/data/derivatives/cosmoMvpa/contrast'
 
 ########
 
@@ -52,6 +48,7 @@ mvpa = do.call(rbind, resultFiles)
 # mvpa <- mvpa[-c(7:9)]
 mvpa$subID <-as.factor(mvpa$subID)
 
+
 mvpa$roi_order <- ifelse(mvpa$mask == 'leftAud', 1, 
                          ifelse(mvpa$mask == 'rightAud', 2, 
                                 ifelse(mvpa$mask == 'leftBG', 3, 
@@ -75,7 +72,7 @@ mvpa$mask <- ifelse(mvpa$mask == 'leftAud', 'audL',
 # we can show under the same vx size as the others
 # better way would be dividing the masks an re-run the decoding
 mvpa$voxelToPlot <- mvpa$choosenVoxNb
-mvpa$voxelToPlot<- ifelse(mvpa$mask == 'SMA', mvpa$voxelToPlot/2, mvpa$voxelToPlot)
+#mvpa$voxelToPlot<- ifelse(mvpa$mask == 'SMA', mvpa$voxelToPlot/2, mvpa$voxelToPlot)
 
 # ==============================================================================
 # summary stats
@@ -83,11 +80,10 @@ df <- summarySE(data = mvpa,
                 groupvars=c('mask', 'roi_order', 'image','ffxSmooth','voxelToPlot','roi_color_code'),
                 measurevar='accuracy')
 
-
 #################
 pd <- position_dodge(0.1)
 
-filename <- paste(pathCosmoResults, '/plot/', 'Decoding_SimpleVsComplex-AllCondition-5Beta.png', sep = '')
+filename <- paste(pathCosmoResults, '/plot/', 'Decoding_SimpleVsComplex-1Beta.png', sep = '')
 title <- paste('Simple vs Complex Rhythm Decoding ')
 
 
@@ -112,6 +108,64 @@ fig <- ggplot(df, aes(x = reorder(mask, roi_order), y = accuracy)) +
 fig
 
 ggsave(filename, device="png", units="in", width=18, height=9.08, dpi=300)  
+
+
+######
+# a quick look for significance
+chance = 0.5
+iImage = 't_maps'
+iVoxelNb = 150 # 100 150
+iSmoothing = 2
+roi = 'audR' #preR, preL, audL, audR, SMA, bgR, bgL
+
+dataAccuracy = subset(mvpa, image == iImage & choosenVoxNb == iVoxelNb & ffxSmooth == iSmoothing & mask ==roi)
+accuracyVector = dataAccuracy$accuracy - chance
+res = t.test(accuracyVector)
+res
+
+#### not assuming normality - let's do non-parametric test
+
+res = wilcox.test(accuracyVector)
+Za = qnorm(res$p.value/2)
+res
+
+
+
+
+######## only for 1 contrast = MASK = ROI ##################
+# only for 1 big roi from the allsounds vs. rest contrast:
+mvpa$roi_order <- 1
+
+df <- summarySE(data = mvpa, 
+                groupvars=c('mask', 'roi_order', 'image','ffxSmooth','voxelToPlot'),
+                measurevar='accuracy')
+
+
+
+filename <- paste(pathCosmoResults, '/plot/', 'Decoding_SimpleVsComplex-1Beta.png', sep = '')
+title <- paste('Simple vs Complex Rhythm Decoding ')
+
+
+fig <- ggplot(df, aes(x = reorder(mask, roi_order), y = accuracy)) + 
+  geom_point(data = mvpa, aes(group=subID), pos=pd, size=2, color=grey(0.8)) + 
+  geom_point(size=2,col='black') + 
+  geom_hline(yintercept=c(.5), linetype="dotted", colour="red", size=.5) +
+  facet_grid(vars(image,ffxSmooth), vars(voxelToPlot)) +
+  geom_errorbar(aes(ymin=accuracy-se,ymax=accuracy+se),size=1,width=0.2) + 
+  scale_y_continuous(limits=c(0, .90)) +
+  ylab('classification acc.')+
+  xlab('ROIs')+
+  ggtitle(title)+
+  theme_cowplot(font_size = 14,
+                font_family = "",
+                line_size = 0.3,
+                rel_small = 10/12,
+                rel_tiny = 10/12,
+                rel_large = 14/12)
+
+
+fig
+
 
 
 

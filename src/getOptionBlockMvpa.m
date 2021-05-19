@@ -28,7 +28,7 @@ function opt = getOptionBlockMvpa()
 
   % multivariate
   opt.model.file = fullfile(fileparts(mfilename('fullpath')), '..', ...
-                            'model', 'model-RhythmBlockDecoding2_smdl.json');
+                            'model', 'model-RhythmBlockDecoding1_smdl.json');
 
   % task to analyze
   opt.taskName = 'RhythmBlock';
@@ -51,14 +51,14 @@ function opt = getOptionBlockMvpa()
   opt.funcFWHM = 2;
 
   % take the most responsive xx nb of voxels
-  opt.mvpa.ratioToKeep = 0.95; % 100 150 250 350 420
+  opt.mvpa.ratioToKeep = 1000; % 100 150 250 350 420
 
   % set which type of ffx results you want to use
   opt.mvpa.map4D = {'beta', 't_maps'};
 
   % design info
   opt.mvpa.nbRun = 9;
-  opt.mvpa.nbTrialRepetition = 5;
+  opt.mvpa.nbTrialRepetition = 1;
 
   % cosmo options
   opt.mvpa.tool = 'cosmo';
