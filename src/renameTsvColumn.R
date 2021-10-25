@@ -9,7 +9,7 @@ source(pathToFunc)
 
 
 bidsRoot <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/data/derivatives/cpp_spm/sub-001' 
-taskName <- 'RhythmBlock' 
+taskName <- 'RhythmFT' 
 
 taskEventsFiles <- bidsr_queryEvents(bidsRoot = bidsRoot, 
                                      taskName = taskName)
