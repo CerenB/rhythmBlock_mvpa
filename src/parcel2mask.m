@@ -21,10 +21,8 @@ function info = parcel2mask(action)
   warning('off');
   addpath(genpath('/Users/battal/Documents/MATLAB/spm12'));
 
-  % add cpp-spm
-  cppSPM = '/Users/battal/Documents/GitHub/CPPLab/CPP_SPM';
-  addpath(genpath(fullfile(cppSPM, 'src')));
-  addpath(genpath(fullfile(cppSPM, 'lib')));
+  % add cpp repo
+  run ../../rhythmBlock_fMRI_analysis/lib/CPP_BIDS_SPM_pipeline/initCppSpm.m;
 
   % roi path
   parcelPath = fullfile(fileparts(mfilename('fullpath')), '..', ...
@@ -33,13 +31,21 @@ function info = parcel2mask(action)
   %% set info
   % get subject options
   opt = getOptionBlockMvpa();
+  opt.binarise.do = false;
 
   % smooth info for ffxDir
   funcFWHM = 2;
 
   % which parcels to use?
-  useAudParcel = 1;
-
+  useAudParcel = 0;
+  
+  % smooth the realigned/resliced mask?
+  % only applied to AudCx, because BG does not need smoothing           
+  maskFWHM = 1;
+  prefixSmooth = ['s', num2str(maskFWHM)];
+  opt.threshold = 0.05;
+  
+  %% let's start
   if useAudParcel == 1
     % parcel codes in FS LookUp Table
     parcelCodes = [11136, 11175, 11133, 12136, 12175, 12133];
@@ -71,16 +77,6 @@ function info = parcel2mask(action)
 
   wholeParcelName = 'destrieux.nii';
 
-  %% smooth the realigned/resliced mask?
-  % only applied to AudCx, because BG does not need smoothing
-
-  % if yes, then define the masks to be smoothed, and FWHM in mm
-  maskToSmooth = {'rlauditorycx.nii', 'rrauditorycx.nii'};
-  maskFWHM = 1;
-  prefixDec = 'dec_';
-  prefixSmooth = ['s', num2str(maskFWHM), '_'];
-  threshold = 0.05;
-
   %% let's shave fun
   switch action
 
@@ -96,7 +92,7 @@ function info = parcel2mask(action)
         for iParcel = 1:length(parcelCodes)
 
           % load the whole parcel
-          parcel1 = load_nii(fullfile(parcelPath, subID, wholeParcelName));
+          parcel1 = load_untouch_nii(fullfile(parcelPath, subID, wholeParcelName));
 
           % assign zero to all the other parcels
           parcel1.img (parcel1.img ~= parcelCodes(iParcel)) = 0;
@@ -110,7 +106,7 @@ function info = parcel2mask(action)
           % save the new binary parcel/mask
           parcelOfInterest = fullfile(parcelPath, subID, ...
                                       [parcelLabels{iParcel}, '.nii']);
-          save_nii(parcel1, parcelOfInterest);
+          save_untouch_nii(parcel1, parcelOfInterest);
 
           info(count).SUBname = subID;
           info(count).ROIname = parcelLabels{iParcel};
@@ -139,7 +135,7 @@ function info = parcel2mask(action)
           for i = iParcel:iParcel + (parcelNb - 1)
 
             parcelName = [parcelLabels{i}, '.nii'];
-            parcel = load_nii(fullfile(parcelPath, subID, parcelName));
+            parcel = load_untouch_nii(fullfile(parcelPath, subID, parcelName));
             parcelImg = cat(4, parcelImg, parcel.img);
 
           end
@@ -157,7 +153,7 @@ function info = parcel2mask(action)
           % save the new binary parcel/mask
           parcelOfInterest = fullfile(parcelPath, subID, ...
                                       [parcelName(1), concatParcelName]);
-          save_nii(temp, parcelOfInterest);
+          save_untouch_nii(temp, parcelOfInterest);
 
           % calculate the voxel num
           voxelNb = sum(temp.img(temp.img == 1));
@@ -188,67 +184,25 @@ function info = parcel2mask(action)
 
           % choose the mask to realign and reslice
           maskName = maskToAlign{iMask};
-          mask = fullfile(parcelPath, subID, maskName);
-          image = fullfile(ffxDir, ['spmT_0001', '.nii']); % 'spmT_0001' '4D_beta_', num2str(funcFWHM)
+          maskPath = fullfile(parcelPath, subID);
+          mask = fullfile(maskPath, maskName);
+          image = fullfile(ffxDir, ['spmT_0001.nii']); % ['4D_beta_', num2str(funcFWHM),'.nii']
 
           %% reslice the new-roi
           % so that it is in the same resolution as your 4D images
-          prefix = 'r';
-
-          matlabbatch = {};
-          matlabbatch{1}.spm.spatial.realign.write.data = {
-                                                           [image, ',1']
-                                                           [mask, ',1']
-                                                          };
-          matlabbatch{1}.spm.spatial.realign.write.roptions.which = [2 1];
-          matlabbatch{1}.spm.spatial.realign.write.roptions.interp = 4;
-          matlabbatch{1}.spm.spatial.realign.write.roptions.wrap = [0 0 0];
-          matlabbatch{1}.spm.spatial.realign.write.roptions.mask = 1;
-          matlabbatch{1}.spm.spatial.realign.write.roptions.prefix = 'r';
+          mask = resliceRoiImages(image, mask);
+          %  mask = removeSpmPrefix(mask, ...
+          %                        spm_get_defaults('realign.write.prefix'));
           
-          saveMatlabBatch(matlabbatch, 'maskReslice', opt, opt.subjects{iSub});
-          
-          spm_jobman('run', matlabbatch);
-          %%%%% ABOVE PART CRASHING, NOT SURE WHY
+          [p, voxelNb, img] = saveBids(mask, maskPath, opt);
           
           
-          % TRY CHANGIng the mask file - issue might be there
-          % maybe binarise the mask if it's not already
-          % or the image file might be different? 
-          
-          
-          % I thought about changing the function (below)
-          % it did not change, got the same error:
-          % Index exceeds matrix dimensions.
-        
-            mask = resliceRoiImages(image, mask);
-%             mask = removeSpmPrefix(mask, ...
-%                                          spm_get_defaults('realign.write.prefix'));
-
-          delete(fullfile(ffxDir, ['r4D_beta*', '.nii']));
-          delete(fullfile(ffxDir, ['mean4D_beta*', '.nii']));
-
-          % call the realigned image
-          realignMaskName = [prefix, maskName];
-          realignMaskPath = fullfile(parcelPath, subID, realignMaskName);
-
-          %% after reslicing, turn it again into binary mask
-          % load roi
-          realignMask = load_untouch_nii(realignMaskPath); %
-
-          % binarise
-          realignMask.img(realignMask.img < threshold) = 0.0;
-          realignMask.img(realignMask.img > 0) = 1.0;
-          voxelNb = sum(realignMask.img(:));
-
-          % save
-          save_untouch_nii(realignMask, realignMaskPath);
-
           % save voxel info into a struct
           info(count).SUBname = subID;
-          info(count).ROIname = realignMaskName; % resliceRealignMaskName
+          info(count).ROIname = p.entities.label; 
+          info(count).ROIhemis = p.filename(2);
           info(count).ROInumVox = voxelNb;
-          info(count).problem = sum(realignMask.img(realignMask.img ~= 1));
+          info(count).isProblemBinarise = sum(img(img ~= 1));
           count = count + 1;
 
         end
@@ -258,75 +212,108 @@ function info = parcel2mask(action)
       % do we want to smooth the masks a bit for having a bigger ROIs?
 
       %% decimalise it before smoothing
-      count = 1;
-
+%       count = 1;
       for iSub = 1:length(opt.subjects)
 
         % get subject folder name
         subID = ['sub-', opt.subjects{iSub}];
+  
+        % masks
+        maskToDecimal = spm_select('FPlist', ...
+                            fullfile(parcelPath, subID), ...
+                            '^space.*_mask.nii.*$');
 
-        for iMask = 1:length(maskToSmooth)
+        for iMask = 1:size(maskToDecimal,1)
 
           % choose the mask to realign and reslice
-          maskName = maskToSmooth{iMask};
+          mask = deblank(maskToDecimal(iMask,:));
 
           % load the mask
-          mask = load_untouch_nii(fullfile(parcelPath, subID, maskName));
+          hdr = spm_vol(mask);
+          img = spm_read_vols(hdr);
 
           % decimalise the mask
-          mask.hdr.dime.datatype = 16;
-          mask.hdr.dime.bitpix = 16;
+          hdr.dt = [16,0];
+%           mask.hdr.dime.datatype = 16;
+%           mask.hdr.dime.bitpix = 16;
 
-          decimalMask{count, 1} = fullfile(parcelPath, subID, ...
-                                           [prefixDec, maskName]);
+          % rename
+          p = bids.internal.parse_filename(spm_file(mask, 'filename'));
+          p.suffix = 'decimalised';
+          p.use_schema = false;
+          newName = bids.create_filename(p);
+          
+          % save new image 
+          hdr.fname = spm_file(hdr.fname, 'filename', newName);
+          spm_write_vol(hdr, img);
 
-          save_untouch_nii(mask, decimalMask{count, 1});
-
-          count = count + 1;
         end
       end
 
       %% smooth it
+      % find decimalised files to smooth
+      maskToSmooth = cellstr(spm_select('FPlist', ...
+                            fullfile(parcelPath, subID), ...
+                            '^space.*label-', ...
+                            [p.entities.label, '_decimalised.nii.*$']));
       matlabbatch = [];
       matlabbatch = setBatchSmoothing(matlabbatch, ...
-                                      decimalMask, ...
+                                      maskToSmooth, ...
                                       maskFWHM, ...
                                       prefixSmooth);
       spm_jobman('run', matlabbatch);
 
-      %% threshold the image
-      % load smoothed decimal masks
+      %% threshold & binarise the image
       count = 1;
       for iSub = 1:length(opt.subjects)
 
         % get subject folder name
         subID = ['sub-', opt.subjects{iSub}];
 
-        for iMask = 1:length(maskToSmooth)
+        % load smoothed decimal masks to threshold
+        maskToThres = cellstr(spm_select('FPlist', ...
+                            fullfile(parcelPath, subID), ...
+                            ['^', prefixSmooth, 'space.*label-'], ...
+                            [p.entities.label, '_decimalised.nii.*$']));
+                        
+        for iMask = 1:size(maskToThres,1)
 
-          % choose the mask to realign and reslice
-          smoothMaskName = [prefixSmooth, prefixDec, maskToSmooth{iMask}];
-
-          % define output name
-          outputMaskName = ['thres', num2str(threshold * 100), '_', smoothMaskName];
-          outputMask = fullfile(parcelPath, subID, outputMaskName);
+          % load the mask - be careful it's cell now
+          mask = deblank(maskToThres{iMask,:});
 
           % load the mask
-          smoothMask = load_untouch_nii(fullfile(parcelPath, subID, smoothMaskName));
+          hdr = spm_vol(mask);
+          img = spm_read_vols(hdr);
+
+          % rename bids friendly
+          p = bids.internal.parse_filename(mask);
+          p.filename = p.filename(3:end);
+          p.suffix = 'mask';
+          p.entities.desc = ['dec_', prefixSmooth,...
+                            '_thres', num2str(opt.threshold * 100)];
+          p.use_schema = false;
+          
+          % need to get rid off s1 prefix
+          p.entities = renameStructField(p.entities,'s1space', 'space');
+          
+          % here is the new name
+          newBinariseName = bids.create_filename(p);
 
           % calculate the voxel num
-          voxelNb = sum(smoothMask.img(:) > threshold);
+          voxelNb = sum(img(:) > opt.threshold);
 
-          %% binarise it
-          smoothMask.img(smoothMask.img(:) > threshold) = 1;
-          smoothMask.img(smoothMask.img(:) <= threshold) = 0;
-
-          %% save
-          save_untouch_nii(smoothMask, outputMask);
-
+          % binarise it
+          img(img(:) > opt.threshold) = 1;
+          img(img(:) <= opt.threshold) = 0;
+        
+          % save
+          hdr.fname = spm_file(hdr.fname, 'filename', newBinariseName);
+          spm_write_vol(hdr, img);
+          
           info(count).SUBname = subID;
-          info(count).ROIname = outputMaskName;
+          info(count).ROIname = newBinariseName;
           info(count).ROInumVox = voxelNb;
+          info(count).ROInumVoxAfter = sum(img(:));
           count = count + 1;
         end
       end
@@ -358,4 +345,34 @@ function info = parcel2mask(action)
   % disp ('Max both hemisphere voxNb');
   % max(b)
 
+end
+
+function [p, voxelNb, img] = saveBids(mask, maskPath, opt)
+
+        % read the resliced image - to calculate the vox number
+          hdr = spm_vol(mask);
+          img = spm_read_vols(hdr);
+
+          % binarise image if it's asked
+          if opt.binarise.do
+            img = img > opt.threshold;
+          end
+          
+          % count the vox nb
+          voxelNb = sum(img(:));
+          
+          % rename it with bids friendly struct
+          p = bids.internal.parse_filename(spm_file(mask, 'filename'));
+            
+          p.entities = struct('space', 'individual', ...
+                'hemi', p.filename(2), ...
+                'label', ['FS', p.suffix(3:end)]);
+          p.suffix = 'mask';
+          p.use_schema = false;
+            
+          newName = bids.create_filename(p);
+
+          % save with new name
+          movefile(mask, ...
+                 fullfile(maskPath, newName));
 end
