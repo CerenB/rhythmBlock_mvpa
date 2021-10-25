@@ -28,14 +28,14 @@ function info = parcel2mask(action)
 
   % roi path
   parcelPath = fullfile(fileparts(mfilename('fullpath')), '..', ...
-                        '..', '..', 'RhythmCateg_ROI', 'freesurfer');
+                        '..', '..', '..','RhythmCateg_ROI', 'freesurfer');
 
   %% set info
   % get subject options
   opt = getOptionBlockMvpa();
 
   % smooth info for ffxDir
-  funcFWHM = 0;
+  funcFWHM = 2;
 
   % which parcels to use?
   useAudParcel = 1;
@@ -189,13 +189,13 @@ function info = parcel2mask(action)
           % choose the mask to realign and reslice
           maskName = maskToAlign{iMask};
           mask = fullfile(parcelPath, subID, maskName);
-          image = fullfile(ffxDir, '4D_beta_0.nii');
+          image = fullfile(ffxDir, ['spmT_0001', '.nii']); % 'spmT_0001' '4D_beta_', num2str(funcFWHM)
 
           %% reslice the new-roi
           % so that it is in the same resolution as your 4D images
           prefix = 'r';
 
-          matlabbatch = [];
+          matlabbatch = {};
           matlabbatch{1}.spm.spatial.realign.write.data = {
                                                            [image, ',1']
                                                            [mask, ',1']
@@ -205,7 +205,25 @@ function info = parcel2mask(action)
           matlabbatch{1}.spm.spatial.realign.write.roptions.wrap = [0 0 0];
           matlabbatch{1}.spm.spatial.realign.write.roptions.mask = 1;
           matlabbatch{1}.spm.spatial.realign.write.roptions.prefix = 'r';
+          
+          saveMatlabBatch(matlabbatch, 'maskReslice', opt, opt.subjects{iSub});
+          
           spm_jobman('run', matlabbatch);
+          %%%%% ABOVE PART CRASHING, NOT SURE WHY
+          
+          
+          % TRY CHANGIng the mask file - issue might be there
+          % maybe binarise the mask if it's not already
+          % or the image file might be different? 
+          
+          
+          % I thought about changing the function (below)
+          % it did not change, got the same error:
+          % Index exceeds matrix dimensions.
+        
+            mask = resliceRoiImages(image, mask);
+%             mask = removeSpmPrefix(mask, ...
+%                                          spm_get_defaults('realign.write.prefix'));
 
           delete(fullfile(ffxDir, ['r4D_beta*', '.nii']));
           delete(fullfile(ffxDir, ['mean4D_beta*', '.nii']));

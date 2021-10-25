@@ -9,19 +9,18 @@ function opt = getOptionBlockMvpa()
   end
 
   % suject to run in each group
-  opt.subjects = {'001', '002', '003', '004', '005', '006', '007', ...
-                  '008', '009', '010', '011'};
+  opt.subjects = {'012'};
 
   % Uncomment the lines below to run preprocessing
   % - don't use realign and unwarp
   opt.realign.useUnwarp = true;
 
   % we stay in native space (that of the T1)
-  opt.space = 'MNI'; % 'individual', 'MNI'
+  opt.space = 'individual'; % 'individual', 'MNI'
 
   % The directory where the data are located
   opt.dataDir = fullfile(fileparts(mfilename('fullpath')), ...
-                         '..', '..', '..', 'data','raw');
+                         '..', '..', '..', 'raw');
   opt.derivativesDir = fullfile(opt.dataDir, '..', 'derivatives', 'cpp_spm');
 
   opt.pathOutput = fullfile(opt.dataDir, '..', 'derivatives', 'cosmoMvpa');
