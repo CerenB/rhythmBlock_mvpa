@@ -31,13 +31,13 @@ function info = parcel2mask(action)
   %% set info
   % get subject options
   opt = getOptionBlockMvpa();
-  opt.binarise.do = false;
+  opt.binarise.do = true;
 
   % smooth info for ffxDir
   funcFWHM = 2;
 
   % which parcels to use?
-  useAudParcel = 0;
+  useAudParcel = 1;
   
   % smooth the realigned/resliced mask?
   % only applied to AudCx, because BG does not need smoothing           
@@ -186,7 +186,7 @@ function info = parcel2mask(action)
           maskName = maskToAlign{iMask};
           maskPath = fullfile(parcelPath, subID);
           mask = fullfile(maskPath, maskName);
-          image = fullfile(ffxDir, ['spmT_0001.nii']); % ['4D_beta_', num2str(funcFWHM),'.nii']
+          image = fullfile(ffxDir, 'spmT_0001.nii'); % ['4D_beta_', num2str(funcFWHM),'.nii']
 
           %% reslice the new-roi
           % so that it is in the same resolution as your 4D images
@@ -221,7 +221,7 @@ function info = parcel2mask(action)
         % masks
         maskToDecimal = spm_select('FPlist', ...
                             fullfile(parcelPath, subID), ...
-                            '^space.*_mask.nii.*$');
+                            '^space.*',[concatParcelName(1:end-4),'*_mask.nii.*$']);
 
         for iMask = 1:size(maskToDecimal,1)
 
@@ -251,17 +251,25 @@ function info = parcel2mask(action)
       end
 
       %% smooth it
-      % find decimalised files to smooth
-      maskToSmooth = cellstr(spm_select('FPlist', ...
+        for iSub = 1:length(opt.subjects)
+            
+            % get subject folder name
+            subID = ['sub-', opt.subjects{iSub}];
+        
+            % find decimalised files to smooth
+            maskToSmooth = cellstr(spm_select('FPlist', ...
                             fullfile(parcelPath, subID), ...
                             '^space.*label-', ...
                             [p.entities.label, '_decimalised.nii.*$']));
-      matlabbatch = [];
-      matlabbatch = setBatchSmoothing(matlabbatch, ...
+                        
+            matlabbatch = [];
+            matlabbatch = setBatchSmoothing(matlabbatch, ...
                                       maskToSmooth, ...
                                       maskFWHM, ...
                                       prefixSmooth);
-      spm_jobman('run', matlabbatch);
+            spm_jobman('run', matlabbatch);
+            
+        end
 
       %% threshold & binarise the image
       count = 1;
