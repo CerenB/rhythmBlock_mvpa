@@ -1,30 +1,10 @@
-function accu = runBlockMvpa(opt)
+function accu = calculateMvpa(opt)
 
-  % cd(fileparts(mfilename('fullpath')));
-  %% define paths
-%   % spm - for now
-%   warning('off');
-%   addpath(genpath('~/Documents/MATLAB/spm12'));
-%   % cosmo
-%   cosmo = '~/Documents/MATLAB/CoSMoMVPA';
-%   addpath(genpath(cosmo));
-%   cosmo_warning('once');
-% 
-%   % libsvm
-%   libsvm = '~/Documents/MATLAB/libsvm';
-%   addpath(genpath(libsvm));
-%   % verify it worked.
-%   cosmo_check_external('libsvm'); % should not give an error
-% 
-%   % add cpp-spm
-%   cppSPM = '~/Documents/GitHub/CPPLab/CPP_SPM';
-%   addpath(genpath(fullfile(cppSPM, 'src')));
-%   addpath(genpath(fullfile(cppSPM, 'lib')));
-% 
-%   % get options
-%   opt = getOptionBlockMvpa();
-
-%   checkDependencies();
+% main function which loops through masks and subjects to calculate the
+% decoding accuracies for given conditions.
+% dependant on SPM + CPP_SPM and CosMoMvpa toolboxes
+% the output is compatible for R visualisation, it gives .csv file as well
+% as .mat file 
 
   % get the smoothing parameter for 4D map
   funcFWHM = opt.funcFWHM;
@@ -71,14 +51,14 @@ function accu = runBlockMvpa(opt)
     roiSource = 'freesurfer';
 
     maskPath = fullfile(fileparts(mfilename('fullpath')), '..', ...
-                        '..', '..', '..', 'RhythmCateg_ROI', 'freesurfer');
+                        '..', '..', '..', 'RhythmCateg_ROI', roiSource);
 
-    maskBaseName = ['task-', opt.taskName];
+    maskBaseName = ['task-', opt.taskName, '_'];
                     
     maskName = {'hemi-r_space-individual_label-FSauditorycx_desc-decS1Thres5_mask.nii', ...
                 'hemi-l_space-individual_label-FSauditorycx_desc-decS1Thres5_mask.nii', ...
-                'task-RhythmBlock_hemi-l_space-individual_label-FSbasalganglia_mask.nii', ...
-                'task-RhythmBlock_hemi-r_space-individual_label-FSbasalganglia_mask.nii'};
+                'hemi-l_space-individual_label-FSbasalganglia_mask.nii', ...
+                'hemi-r_space-individual_label-FSbasalganglia_mask.nii'};
 
     maskLabel = {'leftAud', 'rightAud', 'leftBG', 'rightBG'};
 
@@ -146,6 +126,9 @@ function accu = runBlockMvpa(opt)
           mask = fullfile(maskPath, subFolder, [maskBaseName, maskName{iMask}]);
         end
 
+        % display the used mask
+        disp(maskName{iMask});
+        
         % 4D image
         imageName = ['4D_', opt.mvpa.map4D{iImage}, '_', num2str(funcFWHM), '.nii'];
         image = fullfile(ffxDir, imageName);

@@ -49,5 +49,15 @@ clc;
   
   %% run mvpa 
   
-  accuracy = runBlockMvpa(opt);
+  % use parcels or NS masks?
+  opt.mvpa.useParcel = 1;
+  accuracy = calculateMvpa(opt);
+  
+  
+  
+  
+  
+  
+  
+  
   
