@@ -1,30 +1,30 @@
-function accu = runBlockMvpa
+function accu = runBlockMvpa(opt)
 
   % cd(fileparts(mfilename('fullpath')));
   %% define paths
-  % spm - for now
-  warning('off');
-  addpath(genpath('~/Documents/MATLAB/spm12'));
-  % cosmo
-  cosmo = '~/Documents/MATLAB/CoSMoMVPA';
-  addpath(genpath(cosmo));
-  cosmo_warning('once');
+%   % spm - for now
+%   warning('off');
+%   addpath(genpath('~/Documents/MATLAB/spm12'));
+%   % cosmo
+%   cosmo = '~/Documents/MATLAB/CoSMoMVPA';
+%   addpath(genpath(cosmo));
+%   cosmo_warning('once');
+% 
+%   % libsvm
+%   libsvm = '~/Documents/MATLAB/libsvm';
+%   addpath(genpath(libsvm));
+%   % verify it worked.
+%   cosmo_check_external('libsvm'); % should not give an error
+% 
+%   % add cpp-spm
+%   cppSPM = '~/Documents/GitHub/CPPLab/CPP_SPM';
+%   addpath(genpath(fullfile(cppSPM, 'src')));
+%   addpath(genpath(fullfile(cppSPM, 'lib')));
+% 
+%   % get options
+%   opt = getOptionBlockMvpa();
 
-  % libsvm
-  libsvm = '~/Documents/MATLAB/libsvm';
-  addpath(genpath(libsvm));
-  % verify it worked.
-  cosmo_check_external('libsvm'); % should not give an error
-
-  % add cpp-spm
-  cppSPM = '~/Documents/GitHub/CPPLab/CPP_SPM';
-  addpath(genpath(fullfile(cppSPM, 'src')));
-  addpath(genpath(fullfile(cppSPM, 'lib')));
-
-  % get options
-  opt = getOptionBlockMvpa();
-
-  checkDependencies();
+%   checkDependencies();
 
   % get the smoothing parameter for 4D map
   funcFWHM = opt.funcFWHM;
@@ -73,10 +73,12 @@ function accu = runBlockMvpa
     maskPath = fullfile(fileparts(mfilename('fullpath')), '..', ...
                         '..', '..', '..', 'RhythmCateg_ROI', 'freesurfer');
 
-    maskName = {'thres5_s1_dec_rlauditorycx.nii', ...
-                'thres5_s1_dec_rrauditorycx.nii', ...
-                'rlbasalganglia.nii', ...
-                'rrbasalganglia.nii'};
+    maskBaseName = ['task-', opt.taskName];
+                    
+    maskName = {'hemi-r_space-individual_label-FSauditorycx_desc-decS1Thres5_mask.nii', ...
+                'hemi-l_space-individual_label-FSauditorycx_desc-decS1Thres5_mask.nii', ...
+                'task-RhythmBlock_hemi-l_space-individual_label-FSbasalganglia_mask.nii', ...
+                'task-RhythmBlock_hemi-r_space-individual_label-FSbasalganglia_mask.nii'};
 
     maskLabel = {'leftAud', 'rightAud', 'leftBG', 'rightBG'};
 
@@ -141,7 +143,7 @@ function accu = runBlockMvpa
         % choose the mask
         mask = fullfile(maskPath, maskName{iMask});
         if opt.mvpa.useParcel == 1
-          mask = fullfile(maskPath, subFolder, maskName{iMask});
+          mask = fullfile(maskPath, subFolder, [maskBaseName, maskName{iMask}]);
         end
 
         % 4D image
