@@ -48,14 +48,11 @@ function opt = getOptionBlockMvpa()
 
   %% mvpa options
 
-  % use parcels or NS masks?
-  opt.mvpa.useParcel = 0;
-
   % define the 4D maps to be used
   opt.funcFWHM = 2;
 
   % take the most responsive xx nb of voxels
-  opt.mvpa.ratioToKeep = 1000; % 100 150 250 350 420
+  opt.mvpa.ratioToKeep = 300; % 100 150 250 350 420
 
   % set which type of ffx results you want to use
   opt.mvpa.map4D = {'beta', 't_maps'};
@@ -71,6 +68,6 @@ function opt = getOptionBlockMvpa()
   opt.mvpa.feature_selector = @cosmo_anova_feature_selector;
 
   % permute the accuracies ?
-  opt.mvpa.permutate = 0;
+  opt.mvpa.permutate = 1;
 
 end
