@@ -1,4 +1,4 @@
-function accu = calculateMvpa(opt)
+function accu = calculateMvpa(opt, roiSource)
 
 % main function which loops through masks and subjects to calculate the
 % decoding accuracies for given conditions.
@@ -9,60 +9,8 @@ function accu = calculateMvpa(opt)
   % get the smoothing parameter for 4D map
   funcFWHM = opt.funcFWHM;
 
-  %% roi path
-  % use parcels or NS mask?
-
-  roiSource = 'contrast';
-
-  maskPath = fullfile(fileparts(mfilename('fullpath')), '..', ...
-                      '..', '..', '..', 'RhythmCateg_ROI', roiSource);
-
-  % masks to decode
-  maskName = {'allSounds_Mask_p001.nii'};
-
-  % use in output roi name
-  maskLabel = {'AllSoundsContrast'};
-  
-  % use in output name
-%   roiSource = 'neurosnyth';
-% 
-%   maskPath = fullfile(fileparts(mfilename('fullpath')), '..', ...
-%                       '..', '..', '..', 'RhythmCateg_ROI', 'neurosynth', ...
-%                       'functional', 'derivatives');
-% 
-%   % masks to decode
-%   % maskName = {'leftrrthres_7premotor_FDR_0.01.nii', ...
-%   %            'rightrrthres_7premotor_FDR_0.01.nii',...
-%   %            'rrthres_10sma_FDR_0.01.nii'};
-%   maskName = {'leftbin_rnativeThres_7_auditory_FDR_0.01.nii', ...
-%               'rightbin_rnativeThres_6_auditory_FDR_0.01.nii', ...
-%               'rrthres_7sma_FDR_0.01.nii', ...
-%               'leftrrthres_5premotor_FDR_0.01.nii', ...
-%               'rightbin_rnativeThres_5_premotor_FDR_0.01.nii'};
-% 
-%   % use in output roi name
-%   maskLabel = {'leftAud', 'rightAud', 'SMA', 'leftPremotor', 'rightPremotor'};
-  % maskLabel = {'leftPremotor','rightPremotor', 'SMA'};
-
-  % parcels
-  % if use parcels, re-writes mask names:
-  if opt.mvpa.useParcel == 1
-
-    roiSource = 'freesurfer';
-
-    maskPath = fullfile(fileparts(mfilename('fullpath')), '..', ...
-                        '..', '..', '..', 'RhythmCateg_ROI', roiSource);
-
-    maskBaseName = ['task-', opt.taskName, '_'];
-                    
-    maskName = {'hemi-r_space-individual_label-FSauditorycx_desc-decS1Thres5_mask.nii', ...
-                'hemi-l_space-individual_label-FSauditorycx_desc-decS1Thres5_mask.nii', ...
-                'hemi-l_space-individual_label-FSbasalganglia_mask.nii', ...
-                'hemi-r_space-individual_label-FSbasalganglia_mask.nii'};
-
-    maskLabel = {'leftAud', 'rightAud', 'leftBG', 'rightBG'};
-
-  end
+  % choose masks to be used
+  opt = chooseMask(opt, roiSource);
 
   %% set output folder/name
   savefileMat = fullfile(opt.pathOutput, ...
@@ -118,16 +66,16 @@ function accu = calculateMvpa(opt)
 
     for iImage = 1:length(opt.mvpa.map4D)
 
-      for iMask = 1:length(maskName)
+      for iMask = 1:length(opt.maskName)
 
         % choose the mask
-        mask = fullfile(maskPath, maskName{iMask});
-        if opt.mvpa.useParcel == 1
-          mask = fullfile(maskPath, subFolder, [maskBaseName, maskName{iMask}]);
+        mask = fullfile(opt.maskPath, opt.maskName{iMask});
+        if strcmp(roiSource, 'freesurfer') || strcmp(roiSource, 'hmat')
+          mask = fullfile(opt.maskPath, subFolder, [opt.maskBaseName, opt.maskName{iMask}]);
         end
 
         % display the used mask
-        disp(maskName{iMask});
+        disp(opt.maskName{iMask});
         
         % 4D image
         imageName = ['4D_', opt.mvpa.map4D{iImage}, '_', num2str(funcFWHM), '.nii'];
@@ -200,7 +148,7 @@ function accu = calculateMvpa(opt)
 
         %% store output
         accu(count).subID = subID;
-        accu(count).mask = maskLabel{iMask};
+        accu(count).mask = opt.maskLabel{iMask};
         accu(count).maskVoxNb = maskVoxel;
         accu(count).choosenVoxNb = opt.mvpa.feature_selection_ratio_to_keep;
        % accu(count).choosenVoxNb = round(maskVoxel * maxRatio);
@@ -243,7 +191,7 @@ function accu = calculateMvpa(opt)
         % increase the counter and allons y!
         count = count + 1;
 
-        fprintf(['Sub'  subID ' - area: ' maskLabel{iMask} ...
+        fprintf(['Sub'  subID ' - area: ' opt.maskLabel{iMask} ...
                  ', accuracy: ' num2str(accuracy) '\n\n\n']);
 
       end

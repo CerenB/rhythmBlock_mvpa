@@ -26,8 +26,7 @@ function info = parcel2mask(action, parcelPath, opt, useAudParcel)
 
   % smooth the realigned/resliced mask?
   % only applied to AudCx, because BG does not need smoothing           
-  maskFWHM = 1;
-  prefixSmooth = ['s', num2str(maskFWHM)];
+  prefixSmooth = ['s', num2str(opt.maskFWHM)];
   opt.threshold = 0.05;
   
   %% let's start
@@ -210,7 +209,7 @@ function info = parcel2mask(action, parcelPath, opt, useAudParcel)
                         
         maskToDecimal = spm_select('FPlist', ...
                             fullfile(parcelPath, subID), ...
-                            ['^',maskPattern,'*_mask.nii.*$']);
+                            ['^',maskPattern,'_mask.nii.*$']);
 
         for iMask = 1:size(maskToDecimal,1)
 
@@ -252,7 +251,7 @@ function info = parcel2mask(action, parcelPath, opt, useAudParcel)
             matlabbatch = [];
             matlabbatch = setBatchSmoothing(matlabbatch, ...
                                       maskToSmooth, ...
-                                      maskFWHM, ...
+                                      opt.maskFWHM, ...
                                       prefixSmooth);
             spm_jobman('run', matlabbatch);
             
@@ -289,7 +288,7 @@ function info = parcel2mask(action, parcelPath, opt, useAudParcel)
           p.use_schema = false;
           
           % need to get rid off s1 prefix
-          p.entities = renameStructField(p.entities,'s1task', 'task');
+          p.entities = renameStructField(p.entities,[prefixSmooth,'task'], 'task');
           
           % here is the new name
           newBinariseName = bids.create_filename(p);
@@ -310,9 +309,6 @@ function info = parcel2mask(action, parcelPath, opt, useAudParcel)
           info(count).ROInumVox = voxelNb;
           info(count).ROInumVoxAfter = sum(img(:));
           count = count + 1;
-          
-%           % delete the unused smoothed decimalised file
-%           delete(mask);
           
         end
         

@@ -1,6 +1,4 @@
-clear;
-clc;
-
+function opt = hmat2mask(opt)
 % this is a script for converting HMAT masks into subject space mask
 % alternative script is converting Freesurfer(FS) masks into MNI mask
 
@@ -28,42 +26,16 @@ clc;
 
 % reslicing the roi according to the w- functional image (or Tmap.nii)
 
-% set paths
-warning('off');
-addpath(genpath('/Users/battal/Documents/MATLAB/spm12'));
-
-% add cpp repo
-run ../lib/CPP_BIDS_SPM_pipeline/initCppSpm.m;
-
-% get parameters
-opt = getOptionBlock();
-
-
-% dont start from copying the raw masks
-opt.copyRawToDerivatives.do = false; 
-
-% reslice the mask into mni  func space
-opt.reslice.do = false; 
-
-% reslice mask to normalised func space 
-% (only once is enough for MNI space roi)
-opt.resliceFunc.do = false;
-
-% transform space from "mni func image" to "individual func image" 
-opt.inversTransform.do = false; 
-
-% count the mask voxel
-opt.countVoxel.do = true;
-
 
 opt.roi.space = 'individual';
-funcFWHM = 2;
+funcFWHM = opt.funcFWHM;
 
 
 %% let's start
 [BIDS, opt] = setUpWorkflow(opt, 'create ROI');
 
-roiDerivativesFolder = 'derivativesBlock';
+roiDerivativesFolder = 'derivatives';
+%  spm_mkdir(fullfile(opt.dir.roi, roiDerivativesFolder));
 
 spm_mkdir(fullfile(opt.dir.roi, roiDerivativesFolder, 'group'));
 
@@ -87,7 +59,7 @@ if opt.reslice.do
     opt.space = 'MNI'; % make sure we are in normalised space
     
     funcMask = resliceToMNIFuncIndivSpace(opt,roiDerivativesFolder, funcFWHM);
-    
+    disp(funcMask);
 end
 
 if opt.resliceFunc.do
@@ -95,7 +67,7 @@ if opt.resliceFunc.do
     opt.space = 'MNI'; % make sure we are in normalised space
     
     funcMask = resliceToMNIFuncGroupSpace(opt,roiDerivativesFolder, funcFWHM);
-
+    disp(funcMask);
 end
 
 %% let's do the inverse transformation now
@@ -104,7 +76,7 @@ if opt.inversTransform.do && any(strcmp(opt.roi.space, 'individual'))
     
     opt.space = 'individual'; % make sure we are in subject space
     
-    count = 1;
+%     count = 1;
     opt.threshold = 0.05;
     
     for iSub = 1:numel(opt.subjects)
@@ -163,15 +135,16 @@ if opt.inversTransform.do && any(strcmp(opt.roi.space, 'individual'))
             % rename
             p = bids.internal.parse_filename(spm_file(roiImage, 'filename'));
             
-            entities = struct('space', 'individual', ...
+            entities = struct('task', opt.taskName, ...
                 'hemi', p.entities.label(1), ...
+                'space', 'individual', ...
                 'label', p.entities.label(3:end), ...
                 'desc', 'inverseTransform');
             
             nameStructure = struct('entities', entities, ...
                 'suffix', 'mask', ...
                 'ext', '.nii', ...
-                'use_schema', false);
+                'use_schema', false);      
 
             newName = bids.create_filename(nameStructure);
             
@@ -181,6 +154,7 @@ if opt.inversTransform.do && any(strcmp(opt.roi.space, 'individual'))
                                         newName));
             
         end
+       
         
     end
 end
@@ -196,7 +170,8 @@ if opt.countVoxel.do
         
         roiList = spm_select('FPlist', ...
             fullfile(opt.dir.roi, roiDerivativesFolder, subFolder), ...
-            '^space.*inverseTransform_mask.nii.*$');
+            ['^task-',opt.taskName,'.*inverseTransform_mask.nii.*$']);
+        
         roiList = cellstr(roiList);
         
         for iROI = 1:size(roiList, 1)
@@ -220,8 +195,12 @@ if opt.countVoxel.do
             
         end
     end
+    
+    opt.info = info;
+    
 end
 
+end
 
 function [funcMask] = resliceToMNIFuncIndivSpace(opt,roiDerivativesFolder,funcFWHM)
 
@@ -317,8 +296,11 @@ function copyFromRawToDerivatives(opt, roiDerivativesFolder)
         % raw file
         rawMask = fullfile(opt.dir.roi,'raw', maskAll(iFile).name);
         
-        % rename HMAT masks
-        rawMask = renameHmat(rawMask);
+        %check if its bids-formatted already
+        if ~contains(rawMask, 'space')
+            % rename HMAT masks
+            rawMask = renameHmat(rawMask);
+        end
         
         % now it's bids-friendly, lets move them to derivatives
         groupMask = strrep(rawMask, 'raw', [roiDerivativesFolder,'/group']);
