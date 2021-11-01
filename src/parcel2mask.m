@@ -1,4 +1,4 @@
-function info = parcel2mask(action)
+function info = parcel2mask(action, parcelPath, opt, useAudParcel)
 
   % it takes the atlas defined parcels from FS output (in the subject's
   % anatomical native space)
@@ -11,34 +11,19 @@ function info = parcel2mask(action)
   % action 2 = combines the left hemisphere masks into 1 (e.g. left-basal
   % ganglia, or left-auditory cortex).
   % action 3 = reslice the masks by using spm func to the functional (4D.nii) image
-  % action 4 = smooths the masks
+  % action 4 = smooths the masks for auditory parcels
 
   % be careful, it has two options, with auditory cortex and with basal
   % ganglia (parcel numbers, labels, roi names differ)
 
-  %% set paths
-  % spm
-  warning('off');
-  addpath(genpath('/Users/battal/Documents/MATLAB/spm12'));
 
-  % add cpp repo
-  run ../../rhythmBlock_fMRI_analysis/lib/CPP_BIDS_SPM_pipeline/initCppSpm.m;
-
-  % roi path
-  parcelPath = fullfile(fileparts(mfilename('fullpath')), '..', ...
-                        '..', '..', '..','RhythmCateg_ROI', 'freesurfer');
 
   %% set info
-  % get subject options
-  opt = getOptionBlockMvpa();
   opt.binarise.do = true;
 
   % smooth info for ffxDir
-  funcFWHM = 2;
+  funcFWHM = opt.funcFWHM;
 
-  % which parcels to use?
-  useAudParcel = 1;
-  
   % smooth the realigned/resliced mask?
   % only applied to AudCx, because BG does not need smoothing           
   maskFWHM = 1;
@@ -191,9 +176,8 @@ function info = parcel2mask(action)
           %% reslice the new-roi
           % so that it is in the same resolution as your 4D images
           mask = resliceRoiImages(image, mask);
-          %  mask = removeSpmPrefix(mask, ...
-          %                        spm_get_defaults('realign.write.prefix'));
           
+          % save bids name
           [p, voxelNb, img] = saveBids(mask, maskPath, opt);
           
           
@@ -209,19 +193,24 @@ function info = parcel2mask(action)
       end
 
     case 4
-      % do we want to smooth the masks a bit for having a bigger ROIs?
+        % do we want to smooth the masks a bit for having a bigger ROIs?
 
+        % mask pattern to find
+        maskPattern = ['task-', opt.taskName, ...
+                       '_hemi.*',concatParcelName(1:end-4)];
+                   
       %% decimalise it before smoothing
-%       count = 1;
+
       for iSub = 1:length(opt.subjects)
 
         % get subject folder name
         subID = ['sub-', opt.subjects{iSub}];
   
-        % masks
+
+                        
         maskToDecimal = spm_select('FPlist', ...
                             fullfile(parcelPath, subID), ...
-                            '^space.*',[concatParcelName(1:end-4),'*_mask.nii.*$']);
+                            ['^',maskPattern,'*_mask.nii.*$']);
 
         for iMask = 1:size(maskToDecimal,1)
 
@@ -234,8 +223,6 @@ function info = parcel2mask(action)
 
           % decimalise the mask
           hdr.dt = [16,0];
-%           mask.hdr.dime.datatype = 16;
-%           mask.hdr.dime.bitpix = 16;
 
           % rename
           p = bids.internal.parse_filename(spm_file(mask, 'filename'));
@@ -257,10 +244,10 @@ function info = parcel2mask(action)
             subID = ['sub-', opt.subjects{iSub}];
         
             % find decimalised files to smooth
+            
             maskToSmooth = cellstr(spm_select('FPlist', ...
                             fullfile(parcelPath, subID), ...
-                            '^space.*label-', ...
-                            [p.entities.label, '_decimalised.nii.*$']));
+                            ['^',maskPattern, '*_decimalised.nii.*$']));
                         
             matlabbatch = [];
             matlabbatch = setBatchSmoothing(matlabbatch, ...
@@ -281,8 +268,8 @@ function info = parcel2mask(action)
         % load smoothed decimal masks to threshold
         maskToThres = cellstr(spm_select('FPlist', ...
                             fullfile(parcelPath, subID), ...
-                            ['^', prefixSmooth, 'space.*label-'], ...
-                            [p.entities.label, '_decimalised.nii.*$']));
+                            ['^', prefixSmooth, maskPattern, ...
+                            '*_decimalised.nii.*$']));
                         
         for iMask = 1:size(maskToThres,1)
 
@@ -302,7 +289,7 @@ function info = parcel2mask(action)
           p.use_schema = false;
           
           % need to get rid off s1 prefix
-          p.entities = renameStructField(p.entities,'s1space', 'space');
+          p.entities = renameStructField(p.entities,'s1task', 'task');
           
           % here is the new name
           newBinariseName = bids.create_filename(p);
@@ -323,7 +310,23 @@ function info = parcel2mask(action)
           info(count).ROInumVox = voxelNb;
           info(count).ROInumVoxAfter = sum(img(:));
           count = count + 1;
+          
+%           % delete the unused smoothed decimalised file
+%           delete(mask);
+          
         end
+        
+        % let's delete other decimalised maps
+        maskToDelete = spm_select('FPlist', ...
+                            fullfile(parcelPath, subID), ...
+                            '^*_decimalised.nii.*$');
+                        
+        for iFile = 1:size(maskToDelete,1)
+            fileName = deblank(maskToDelete(iFile,:));
+            delete(fileName);
+        end
+                            
+           
       end
   end
 
@@ -372,9 +375,11 @@ function [p, voxelNb, img] = saveBids(mask, maskPath, opt)
           % rename it with bids friendly struct
           p = bids.internal.parse_filename(spm_file(mask, 'filename'));
             
-          p.entities = struct('space', 'individual', ...
-                'hemi', p.filename(2), ...
-                'label', ['FS', p.suffix(3:end)]);
+          p.entities = struct('task', opt.taskName, ...
+                              'hemi', p.filename(2), ...
+                              'space', 'individual', ...
+                              'label', ['FS', p.suffix(3:end)]);
+  
           p.suffix = 'mask';
           p.use_schema = false;
             
