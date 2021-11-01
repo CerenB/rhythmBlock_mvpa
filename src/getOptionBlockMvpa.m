@@ -9,10 +9,13 @@ function opt = getOptionBlockMvpa()
   end
 
   % suject to run in each group
-  opt.subjects = {'012'};
+  opt.subjects = {'001'};
+%   opt.subjects = {'001', '002', '003', '004', '005', '006',...
+%     '007', '008', '009', '010', '011'};
 %   opt.subjects = {'012', '013', '014','015', '016', '017', ...
 %                   '018', '019', '020', '021', '023'};
 
+    
   % Uncomment the lines below to run preprocessing
   % - don't use realign and unwarp
   opt.realign.useUnwarp = true;
