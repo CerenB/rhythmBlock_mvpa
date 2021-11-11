@@ -1,16 +1,17 @@
+rm(list=ls()) #clean console
+
+
 library(ggplot2)
 library(doBy)
 library(cowplot)
 library(Rmisc)
 library(stringr)
 
-
+library(dplyr)
+library(tidyverse)
 
 #######################################################
-#pathCosmoResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/data/derivatives/cosmoMvpa/neurosynth-freesurfer-2beta-diffVoxelNb'
-#pathCosmoResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/data/derivatives/cosmoMvpa/contrast'
-
-pathCosmoResults <- '/Users/battal/Dropbox/Work/CPPLab/Cerens_files_old/Result_sheets/'
+pathResults <- '/Users/battal/Dropbox/Work/CPPLab/Cerens_files_old/Result_sheets/'
 
 ########
 
@@ -18,12 +19,12 @@ mvpa <- NA
 
 #dataNames <- paste(pathCosmoResults, '*.csv', sep ='/')
 dataNames = "*20210524.csv"
-temp = list.files(path = pathCosmoResults,pattern=dataNames)
+temp = list.files(path = pathResults,pattern=dataNames)
 csvFileNb <- length(temp)     
 
 resultFiles = list()
 for (i in 1:csvFileNb) {
-  fileToRead = paste(pathCosmoResults, temp[i], sep ='/')
+  fileToRead = paste(pathResults, temp[i], sep ='/')
   x  = read.csv(fileToRead)
   x$FileID <- i
   resultFiles[i] = list(x)
@@ -62,11 +63,26 @@ mvpa[,6] <- NULL
 mvpa[,6] <- NULL
 mvpa[,7] <- NULL
 mvpa[,7] <- NULL
+mvpa[,4] <- NULL
 
 # let's multiple accuracy with 100
 mvpa$value <- mvpa$value * 100
 mvpa.motion <- subset(mvpa, isMotion ==1)
 mvpa.static <- subset(mvpa, isMotion == 0)
+
+# define hemisphere
+mvpa$hemis <- ifelse(mvpa$roiName == 'LeftV5', 'left', 
+                      ifelse(mvpa$roiName == 'RightV5', 'right', 
+                             ifelse(mvpa$roiName == 'LeftPT', 'left','right')))
+
+# redefine the within/across axis column
+names(mvpa)[6]<-paste("isWithin")
+mvpa.within <- subset(mvpa, isWithin == 1 | isWithin ==3)
+# only choose motion to see axis of motion exist?
+mvpa.within <- subset(mvpa.within, isMotion == 1)
+###### see below forr further anova on these #####
+
+
 
 # take only 4 motion
 mvpa.4MS <- subset(mvpa, conditions == 'Motion4' | conditions =='Static4')
@@ -138,3 +154,183 @@ ggsave(filename, fig, dpi=300, width=4.5, height=3)
 #### add fonts for ggpplot. 
 filename <- paste(pathCosmoResults, 'Decoding_4Motion4Static_EBSC.pdf', sep = '')
 ggsave(filename, fig, dpi=300, width=8, height=2.4)
+
+
+###### ###### ###### ###### ###### ###### ###### ###### ###### ###### ###### ###### 
+###### within vs. across motion decoding #####
+
+mvpa.within$sub <- as.factor(mvpa.within$sub)
+mvpa.within$roi <- as.factor(mvpa.within$roi)
+mvpa.within$group <- as.factor(mvpa.within$group)
+mvpa.within$hemis <- as.factor(mvpa.within$hemis)
+
+mvpa.within[,9] <- NULL
+mvpa.within[,9] <- NULL
+
+# only keep binary decodings
+mvpa.within<- subset(mvpa.within, conditions != 'Motion4')
+
+# rename the rois etc for anova options
+mvpa.within$roi <- ifelse(mvpa.within$roiName == 'LeftV5', 'V5', 
+                     ifelse(mvpa.within$roiName == 'RightV5', 'V5', 
+                            ifelse(mvpa.within$roiName == 'LeftPT', 'PT','PT')))
+names(mvpa.within)[7]<-'roiOrder'
+names(mvpa.within)[8]<-'roiHemi'
+names(mvpa.within)[6]<-'groupOrder'
+
+
+# let's see some summary stats
+df <- summarySE(data = mvpa.within, 
+                groupvars=c('group', 'roiHemi', 'isWithin'),
+                measurevar='value')
+df
+
+mvpa.within$isWithin<-as.factor(mvpa.within$isWithin)
+mvpa.within$group<-as.factor(mvpa.within$group)
+mvpa.within$conditions<-as.factor(mvpa.within$conditions)
+mvpa.within$hemis<-as.factor(mvpa.within$hemis)
+mvpa.within$roiHemi<-as.factor(mvpa.within$roiHemi)
+mvpa.within$roi<-as.factor(mvpa.within$roi)
+
+
+# test homogenity
+mvpa.within %>%
+  group_by(roiHemi, isWithin) %>%
+  levene_test(value ~ group)
+
+# test normality - crashes 
+mvpa.within.1 <-subset(mvpa.within, isWithin ==1
+                       )
+mvpa.within.1 %>%
+  group_by(roi, hemis, conditions, group) %>%
+  shapiro_test(value)
+
+
+
+# let's try anova' - but it is "unequal"
+# why? 2 conditions for within-axis (LeftvsRight, and UpvsDown)
+# 4 conditions for across-axis (LeftvsUp, LeftvsDown, RightvsUp, RightvsDown)
+
+my.anova <- ezANOVA(data=mvpa.within, 
+                    dv=.(value), 
+                    wid=.(sub), 
+                    within =.(isWithin, roiHemi), 
+                    between=.(group), 
+                    detailed=TRUE, 
+                    type=3) #
+
+my.anova
+
+# to avoid such unbalance - we can average Left and Right across condition decoding
+mvpa.within.1 <-subset(mvpa.within, isWithin == 1)
+mvpa.within.3 <- subset(mvpa.within,isWithin ==3)
+
+mvpa.within.3$isLeft <- ifelse(mvpa.within.3$conditions == 'LeftvsUp', '1', 
+                           ifelse(mvpa.within.3$conditions == 'LeftvsDown', '1', 
+                                  ifelse(mvpa.within.3$conditions == 'RightvsDown', '0','0')))
+
+a<- mvpa.within.3
+mvpa.new.across <- aggregate(a$value, FUN = mean,
+                             by = list(sub = a$sub, group = a$group,isWithin = a$isWithin, 
+                                       groupOrder = a$groupOrder, 
+                                       roiOrder = a$roiOrder, roiHemi = a$roiHemi, hemis = a$hemis, roi = a$roi, isLeft = a$isLeft ))
+
+names(mvpa.new.across)[10] <- 'value'
+
+# now try with averaging more - just to have 1 value for within per subject, 1 value for across
+
+
+# add conditions column to new.across access to we can merge with within dataset
+mvpa.new.across$conditions <- ifelse(mvpa.new.across$isLeft == 1, 'leftAverage','rightAverage')
+
+  
+# reorder columns for later on merge two dataset
+colnames(mvpa.within.1)
+colnames(mvpa.new.across)
+
+temp <- mvpa.new.across[, c(10, 1, 11, 2, 3,4,5,6,7,8)]
+temp 
+
+temp$conditions <-as.factor(temp$conditions)
+#combine back the datasets
+withinacross <- rbind(mvpa.within.1, temp)
+
+# let's look at summary stats
+df <- summarySE(data = withinacross, 
+                groupvars=c('group', 'roiHemi', 'isWithin'),
+                measurevar='value')
+df
+
+
+# test homogenity
+withinacross %>%
+  group_by(roiHemi, isWithin) %>%
+  levene_test(value ~ group)
+
+# test normality - still crashes 
+# str(withinacross)
+# 
+# withinacross$group <- as.factor(withinacross$group)
+# 
+# withinacross %>%
+#   group_by(group) %>%
+#   shapiro_test(value)
+
+
+#let's see with anova now
+my.anova <- ezANOVA(data=withinacross, 
+                    dv=.(value), 
+                    wid=.(sub), 
+                    within =.(isWithin, roiHemi), 
+                    between=.(group), 
+                    detailed=TRUE, 
+                    type=3) #
+
+my.anova
+
+# quick trial to move data into columnar structure for JASP
+temp <- withinacross
+temp[,5] <-NULL
+temp[,5] <-NULL
+temp[,5] <-NULL
+temp[,6] <-NULL
+temp[,6] <-NULL
+
+aa<- subset(temp, roiHemi == 'LeftPT' & conditions == 'LeftvsRight' )
+bb<- subset(temp, roiHemi == 'RightPT' & conditions == 'LeftvsRight' )
+cc<- subset(temp, roiHemi == 'LeftV5' & conditions == 'LeftvsRight' )
+dd<- subset(temp, roiHemi == 'RightV5' &  conditions == 'LeftvsRight' )
+
+
+ee<- subset(temp, roiHemi == 'LeftPT' & conditions == 'UpvsDown' )
+ff<- subset(temp, roiHemi == 'RightPT' & conditions == 'UpvsDown' )
+gg<- subset(temp, roiHemi == 'LeftV5' & conditions == 'UpvsDown' )
+hh<- subset(temp, roiHemi == 'RightV5' &  conditions == 'UpvsDown' )
+
+
+temp2 <- cbind(aa, bb$value, cc$value, dd$value, ee$value, ff$value, gg$value, hh$value)
+
+a<- subset(temp, roiHemi == 'LeftPT' & conditions == 'leftAverage' )
+b<- subset(temp, roiHemi == 'RightPT' & conditions == 'leftAverage' )
+c<- subset(temp, roiHemi == 'LeftV5' & conditions == 'leftAverage' )
+d<- subset(temp, roiHemi == 'RightV5' &  conditions == 'leftAverage' )
+
+e<- subset(temp, roiHemi == 'LeftPT' & conditions == 'rightAverage' )
+f<- subset(temp, roiHemi == 'RightPT' & conditions == 'rightAverage' )
+g<- subset(temp, roiHemi == 'LeftV5' & conditions == 'rightAverage' )
+h<- subset(temp, roiHemi == 'RightV5' &  conditions == 'rightAverage' )
+
+temp2 <- cbind(temp2, a$value, b$value, c$value, d$value, e$value, f$value, g$value, h$value)
+
+#organise a bit more
+temp2[,3] <-NULL
+temp2[,4] <-NULL
+
+names(temp2)<-c('lPT_LR', 'sub', 'group', 'rPT_LR', 'lV5_LR', 'rV5_LR',
+                'lPT_UD', 'rPT_UD', 'lV5_UD', 'rV5_UD',
+                'lPT_LA', 'rPT_LA', 'lV5_LA', 'rV5_LA',
+                'lPT_RA', 'rPT_RA', 'lV5_RA', 'rV5_RA')
+                
+# write as .csv
+write.csv(temp2, 'WithinAcrossDecoding_EBSC_V5PT_11112021.csv', row.names = FALSE)
+
