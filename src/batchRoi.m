@@ -7,8 +7,9 @@ clc;
   addpath(genpath('/Users/battal/Documents/MATLAB/spm12'));
   
   % add cpp repo
-  run ../../rhythmBlock_fMRI_analysis/lib/CPP_BIDS_SPM_pipeline/initCppSpm.m;
-   
+%   run ../../rhythmBlock_fMRI_analysis/lib/CPP_BIDS_SPM_pipeline/initCppSpm.m;
+  run /Users/battal/Documents/GitHub/CPPLab/CPP_SPM/initCppSpm.m; 
+  
   % load your options
   opt = getOptionBlockMvpa();
 
@@ -61,11 +62,36 @@ clc;
   opt = hmat2mask(opt);
   
 
+  %% make a ROI from JulichBrain Cytotechtonic Atlas
+  directory = '/Users/battal/Documents/MATLAB/spm12/toolbox/Anatomy_julichbrain_v29-pmaps-4d';
+  atlas = fullfile(directory, 'JULICH_BRAIN_CYTOARCHITECTONIC_MAPS_2_9_MNI152_2009C_NONL_ASYM.pmaps.nii');
+                
+
+  % get nifti header
+  header = spm_vol(atlas);
+
+  % get atlas content
+  volume = spm_read_vols(header(207));
+  size(volume)
+  
+  % create binary mask of map
+  binary = volume;
+  binary(binary >0.0) = 1.0;
+  
+
+  % prepare header for the output
+  binary_header = header;
+  binary_header.fname = 'mask.nii';
+ 
+  % write mask
+  spm_write_vol(binary_header, binary);
+  
+ %%%% IT DOES NOT WORK -----  
   
   
-  
-  
-  
+ 
+ % ending work session?
+ run /Users/battal/Documents/GitHub/CPPLab/CPP_SPM/uninitCppSpm.m;
   
   
   
