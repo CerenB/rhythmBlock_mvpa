@@ -1,160 +1,370 @@
-library(ggplot2)
-library(doBy)
-library(cowplot)
-library(Rmisc)
-library(stringr)
+# analysis libraries
+library(rstatix)
+library(dplyr)
+library(car)
 
+library(ez) # anova
+library(schoRsch)
 
-
+library(afex) # mixed models
 #######################################################
-#pathCosmoResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/data/derivatives/cosmoMvpa/neurosynth-freesurfer-2beta-diffVoxelNb'
-#pathCosmoResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/data/derivatives/cosmoMvpa/contrast'
 
-pathCosmoResults <- '/Users/battal/Dropbox/Work/CPPLab/Cerens_files_old/Result_sheets/'
+pathResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/Nonmetric/derivatives/cosmoMvpa/'
+# pathResults <- '/Users/battal/Cerens_files/fMRI/Processed/RhythmCateg/RhythmBlock/rhythmBlock_derivatives_cosmoMvpa/'
 
 ########
+mvpa <- read.csv(paste(pathResults, 'NonmetricDecoding_jubrainatlas_s2_ratio150_202303151641.csv', sep ='/'))
 
-mvpa <- NA
 
-#dataNames <- paste(pathCosmoResults, '*.csv', sep ='/')
-dataNames = "*20210524.csv"
-temp = list.files(path = pathCosmoResults,pattern=dataNames)
-csvFileNb <- length(temp)     
+# NonmetricDecoding_contrastSTGOnly_s2_ratio120_202301251403
+# RhythmBlockDecoding_contrast_s2_ratio120_202302011140
+# RhythmBlockDecoding_contrastSTGOnly_s2_ratio120_202302011234
 
-resultFiles = list()
-for (i in 1:csvFileNb) {
-  fileToRead = paste(pathCosmoResults, temp[i], sep ='/')
-  x  = read.csv(fileToRead)
-  x$FileID <- i
-  resultFiles[i] = list(x)
-}
+# NonmetricDecoding_neurosnyth_s2_ratio150_202201192323
+# NonmetricDecoding_neurosnyth_s2_ratio300_202201192258
+# NonmetricDecoding_contrast_s2_ratio120_202301241603
+mvpa <- mvpa[-c(7:9)]
+mvpa$subID <-as.factor(mvpa$subID)
 
-# bind txt files using rbind comment
-mvpa = do.call(rbind, resultFiles)
+head(mvpa)
 
-#####
-### DECODING EB - SC PT-V5
+voxelSize = '150'
+
 #### order things a bit for easy manipulation for plotting
 
-#make sure subjects are factor
-mvpa$sub <-as.factor(mvpa$sub)
 
-#make group order to call them in plot EB first
-mvpa$group_order<-ifelse(mvpa$group == 'EB', 1, 2)
-mvpa$group <-ifelse(mvpa$group == 'CONT', 'SC', 'EB')
+#name change from mask to roi
+mvpa$mask <-as.factor(mvpa$mask)
+names(mvpa)[2] <- 'roi'
+
+# let's make a expType to split the no_pitch exp from pitch exp
+mvpa$subNb <- as.numeric(mvpa$subID)
+mvpa$expType<- ifelse(mvpa$subNb < 11, 'P4', 'P1') # 23 for RhythmBlock, 11 for Nonmetric
+mvpa$expType <-as.factor(mvpa$expType)
 
 #make roi order to call accordingly
-mvpa$roi_order <- ifelse(mvpa$roi == 'lV5_6mm_2.nii', 1, 
-                         ifelse(mvpa$roi == 'rV5_6mm_2.nii', 2, 
-                                ifelse(mvpa$roi == 'lPT_6mm_mo.nii', 3,4)))
+# mvpa$roi_order <- ifelse(mvpa$roi == 'lSTG', 1,
+#                           ifelse(mvpa$roi == 'rSTG', 2, 
+#                                  ifelse(mvpa$roi == 'SMA', 3, 
+#                                         ifelse(mvpa$roi == 'lpreM', 4,
+#                                                ifelse(mvpa$roi == 'rpreM', 5,6)))))
 
-mvpa$roiName <- ifelse(mvpa$roi == 'lV5_6mm_2.nii', 'LeftV5', 
-                         ifelse(mvpa$roi == 'rV5_6mm_2.nii', 'RightV5', 
-                                ifelse(mvpa$roi == 'lPT_6mm_mo.nii', 'LeftPT','RightPT')))
 
-#add motion or static condition
-mvpa$isMotion <- ifelse(tolower(substring(mvpa$conditions, 1, 1)) == 's',0,1) 
-mvpa$condition <- ifelse(tolower(substring(mvpa$conditions, 1, 1)) == 's','static','motion') 
+# mvpa$roi_order <- ifelse(mvpa$roi == 'lSTG_10mm', 2,
+#                          ifelse(mvpa$roi == 'rSTG_10mm', 6, 
+#                                 ifelse(mvpa$roi == 'lSTG_15mm', 3, 
+#                                        ifelse(mvpa$roi == 'rSTG_15mm', 7,
+#                                               ifelse(mvpa$roi == 'lSTG_20mm', 4,
+#                                                      ifelse(mvpa$roi == 'rSTG_20mm', 8,
+#                                                             ifelse(mvpa$roi == 'lSTG_nopitch_Block_p00001', 1,
+#                                                                    ifelse(mvpa$roi == 'rSTG_nopitch_Block_p00001', 5, 99))))))))
 
-# filter out some unnecassary columns
-# filter out plane column 
-mvpa[,6] <- NULL
-mvpa[,6] <- NULL
-mvpa[,7] <- NULL
-mvpa[,7] <- NULL
+mvpa$roi_order <- ifelse(mvpa$roi == 'STS1', 1,
+                         ifelse(mvpa$roi == 'STS2', 2, 
+                                ifelse(mvpa$roi == 'TE10', 3, 
+                                       ifelse(mvpa$roi == 'TE11', 4,
+                                              ifelse(mvpa$roi == 'TE12', 5,
+                                                     ifelse(mvpa$roi == 'TE21', 6,
+                                                            ifelse(mvpa$roi == 'TE22', 7,
+                                                                   ifelse(mvpa$roi == 'TE30', 8, 
+                                                                          ifelse(mvpa$roi == 'TI', 9, 
+                                                                                 ifelse(mvpa$roi == 'TPJ', 10, 11))))))))))
 
-# let's multiple accuracy with 100
-mvpa$value <- mvpa$value * 100
-mvpa.motion <- subset(mvpa, isMotion ==1)
-mvpa.static <- subset(mvpa, isMotion == 0)
+# think about other ways of ordering with below function
+# mvpa$roi_order <- grepl('nopitch', mvpa$roi, fixed = TRUE)
 
-# take only 4 motion
-mvpa.4MS <- subset(mvpa, conditions == 'Motion4' | conditions =='Static4')
-# below does not work because it converts the second letter lower case, I want: SLeftvsRight
-# mvpa.static$conditions <-str_to_title(mvpa.static$conditions)
+# currently we  don't have 2 hemispheres for every ROI
+# later on consider this separation for "Aud Cx only" analysis
+# mvpa$hemis <- ifelse(substr(mvpa$roi,1,1) == 'l', 'left',
+#                      ifelse(substr(mvpa$roi,1,1) == 'r', 'right',NA))
 
-# # take only 4 motion
-# mvpa.4motion <-subset(mvpa.motion, conditions =='Motion4')
-# mvpa.4static <-subset(mvpa.static, conditions =='Static4')
+##### change the hemisphere header/name here - 15.03/2023
+colnames(mvpa)[7] <- 'hemis'
 
-# summary stats
-mvpa.4MS$condRoi <- paste(mvpa.4MS[,'condition'], mvpa.4MS[,'roiName'])
-  
-df <- summarySE(data = mvpa.4MS, 
-                groupvars=c('group', 'group_order', 'condRoi','roiName', 'roi_order','condition'),
-                measurevar='value')
+# make everything factor
+str(mvpa)
+mvpa$image<- as.factor(mvpa$image)
+mvpa$subType<-as.factor(mvpa$subType)
+mvpa$subTypeLabel<- as.factor(mvpa$subTypeLabel)
+mvpa$hemis<-as.factor(mvpa$hemis)
+
+# subset the dataframe for plotting/analysis
+img = 't_maps' # or 't_maps' 'beta'
+exp = 'P1' 
+
+subsetmvpa = subset(mvpa,expType == exp)
+subsetmvpa = subset(subsetmvpa, image == img)
+
+str(subsetmvpa)
+
+
+# let's subset it again with only 8 rois
+#subsetmvpa<- subset(subsetmvpa, roi_order < 9)
+
+df <- summarySE(data = subsetmvpa, 
+                groupvars=c('roi_order','roi', 'subType','hemis'),
+                measurevar='accuracy', na.rm = TRUE)
 df
 
-setlimit = c(10,55) 
-setbreak = c(10,20,30,40,50)
 
-shapesize = 2
+
+######### analyze the data ######### 
+### currently does not make sense, we do not compare the ROIs - omit this part
+# results = leveneTest(accuracy ~ roi, subsetmvpa)
+# results
+# 
+# # test normality 
+# subsetmvpa %>%
+#   group_by(roi) %>%
+#   shapiro_test(accuracy)
+
+# ANOVA IS a bit useless in our case 
+# # anova -with ez package
+# anova1 <- ezANOVA(data=subsetmvpa, 
+#                 dv=.(accuracy), 
+#                 wid=.(subID), 
+#                 within =.(roi), 
+#                 detailed=TRUE, 
+#                 type=3) #
+# 
+# anova1
+# anova_out(anova1)
+# 
+# # # lmm from afex package
+# m1 <- mixed(accuracy ~  roi * hemis * subType + (1|subID), data = subsetmvpa)
+# m1
+# 
+# m2 <- mixed(accuracy ~  roi + (1|subID), data = subsetmvpa)
+# m2
+
+
+# let's do t-test 
+
+# separate for ROIs
+head(subsetmvpa)
+
+subsetmvpa$roi[11][]
+# Levels: STS1 STS2 TE10 TE11 TE12 TE21 TE22 TE30 TI TPJ TeI
+roiName = 'TeI'
+lSTG <-subset(subsetmvpa, roi == roiName & hemis == 'l')
+rSTG <-subset(subsetmvpa, roi ==roiName & hemis == 'r')
+
+t.test(lSTG$accuracy, mu = 0.5, alternative = 'greater') # t = 0.19825, df = 9, p-value = 0.4236
+t.test(rSTG$accuracy, mu = 0.5, alternative = 'greater')
+
+#subsetmvpa$accuracy <- subsetmvpa$accuracy + 50
+
+
+# lSTG <-subset(subsetmvpa, roi =='lSTG_20mm')
+# rSTG <-subset(subsetmvpa, roi =='rSTG_20mm')
+# SMA <-subset(subsetmvpa, roi =='SMA')
+# lpreM <-subset(subsetmvpa, roi =='lpreM')
+# rpreM <-subset(subsetmvpa, roi =='rpreM')
+# cerebellum <-subset(subsetmvpa, roi =='cerebellum')
+
+
+# sig dif than zero?
+t.test(lSTG$accuracy, mu = 0.5, alternative = 'greater') # t = 0.19825, df = 9, p-value = 0.4236
+t.test(rSTG$accuracy, mu = 0.5, alternative = 'greater') # t = 0.58585, df = 9, p-value = 0.2862
+# t.test(lpreM$accuracy, mu = 0.5, alternative = 'greater') # t = 1.2451, df = 9, p-value = 0.1223
+# t.test(rpreM$accuracy, mu = 0.5, alternative = 'greater') # t = 0, df = 9, p-value = 0.5
+# t.test(SMA$accuracy, mu = 0.5, alternative = 'greater')  # t = 0.73855, df = 9, p-value = 0.2395
+# t.test(cerebellum$accuracy, mu = 0.5, alternative = 'greater') # t = 0.41917, df = 9, p-value = 0.3425
+
+
+
+############# PLOTTING  #############
+#is.na(mvpa$accuracy)
+
+min(subsetmvpa$accuracy, na.rm = TRUE)
+max(subsetmvpa$accuracy, na.rm = TRUE)
+
+setlimit = c(0.2,0.9) 
+setbreak = c(0.25, 0.5, 0.75, 1)
+
+
+rois = '11ROI'
+
+shapesize = 1
 shapetype = 21
 shapestroke = 1
 transparent = 1 #0.6
-jitter  = position_jitterdodge(0.2) # position_jitter(width=0.3)
+jitter  = position_jitterdodge(0.3) # position_jitter(width=0.3)
 
 
-fig <- ggplot(data = mvpa.4MS, 
-              aes(x = reorder(condRoi,roi_order), 
-                  y = value, 
-                  color = group,
-                  group = group)) +
-  geom_point(data=mvpa.4MS,aes(x = reorder(condRoi,roi_order), y = value), size = shapesize,
-             position = jitter, shape = shapetype, stroke = shapestroke) + 
-  
-  stat_summary(aes(color=group), fun=mean, fun.min = mean, fun.max = mean, geom="crossbar", size=0.6, width=0.6,position = position_dodge(width=.75)) +
-  
+
+# colors 
+nonmetricGrayBad = "#9ec5aa" # complex green= 3d8c55ff, nonmetricGrap = 6B6B6B
+nonmetricGrayGood = "#3d8c55ff" 
+simplePurpleBad = "#c4a4c9"
+simplePurpleGood = "#8a4a95"
+# conditions
+category2 = ''
+category1 = ''
+
+cond1= paste0(category2," Bad Tapper")
+cond2 = paste0(category2,' Good Tapper')
+cond3 = paste0(category1,' Bad Tapper')
+cond4 = paste0(category1,' Good Tapper')
+
+cond = 'Nonmetric'
+
+##### separate tappers
+fig <- ggplot(data = subsetmvpa, 
+              aes(x = reorder(roi, roi_order),
+                  y = accuracy, 
+                  color = subType,
+                  group = subType)) +
+  geom_point(data=subsetmvpa, 
+             aes(x = reorder(roi, roi_order), 
+                 y = accuracy), 
+             size = shapesize,
+             position = jitter, shape = shapetype, stroke = shapestroke, na.rm = TRUE) + 
+  stat_summary(aes(color = subType), fun=mean, fun.min = mean, fun.max = mean, 
+               geom="crossbar", size=0.6, width=0.6, position = position_dodge(width=.75), 
+               na.rm = TRUE) +
   theme_classic() +
   geom_errorbar(data = df, 
-                aes(ymin = value-se, ymax = value+se, group = reorder(group, group_order)), 
+                aes(ymin = accuracy-se, ymax = accuracy+se, group = subType), 
                 color = 'black',size=0.5, width=0.15, alpha = transparent, position = position_dodge(width=.75)) +
-
-
-  geom_hline(yintercept=c(25), linetype="dotted", colour="black", size=.5) +
+  geom_hline(yintercept=c(.5), linetype="dotted", colour="black", size=.5) +
+  
   ggtitle("") +
-  ylab("Decoding Accuracy (%)") +
+  ylab("") +
   xlab("") +
   theme(axis.text.x=element_text(size=8, face = 'bold', angle=0, colour='black')) + # face = 'bold', 
-  theme(axis.text.y=element_text(size=8, angle=0, colour='black')) +
-  theme(axis.title.y=element_text(size=11, angle=90, colour='black')) +
+  theme(axis.text.y=element_text(size=12, angle=0, colour='black')) +
+  theme(axis.title.y=element_text(size=10, angle=90, colour='black')) +
   scale_y_continuous(limits=setlimit, breaks=setbreak, position="left") +
-  scale_x_discrete(labels = c("Moving","Static","Moving","Static","Moving","Static","Moving","Static"))+
-  # theme(text=element_text(family="Microsoft Sans Serif")) +
-  scale_color_manual(values=c("purple","gray")) +
-  theme(legend.position="none")
+  scale_x_discrete(labels = c("lSTG All", "lSTG 10","lSTG 15","lSTG 20","rSTG All","rSTG 10","rSTG 15","rSTG 20"))+
+  scale_color_manual(name = '', labels = c(cond1, cond2), values=c(nonmetricGrayBad, nonmetricGrayGood)) + 
+  # theme(legend.position= "none")
+  theme(legend.position= c(.85, .85)) +
+  theme(legend.text=element_text(size=8)) +
+  theme(legend.title=element_text(size=9))
 fig
 
-filename <- paste(pathCosmoResults, 'Decoding_4Motion4Static_EBSC.png', sep = '')
-
-# ggsave(filename, fig, dpi=300, width=8, height=2.4)
-
-ggsave(filename, fig, dpi=300, width=4.5, height=3)
-
-#### add fonts for ggpplot. 
-filename <- paste(pathCosmoResults, 'Decoding_4Motion4Static_EBSC.pdf', sep = '')
-ggsave(filename, fig, dpi=300, width=8, height=2.4)
+filename <- paste0(pathResults, 'Decoding_Simple_vs_',cond,  'voxelNb-', voxelSize, '_', rois,'tappers.png')
+# ggsave(filename, fig, dpi=300, width=15, height=6, units='cm') 
+ggsave(filename, fig, dpi=300, width=6, height=3) # 1024 x 512
 
 
+#######################################################
+########## ignore tappers #######################################################
+#######################################################
+df2 <- summarySE(data = subsetmvpa, 
+                 groupvars=c('roi_order','roi', 'hemis'),
+                 measurevar='accuracy', na.rm = TRUE)
+df2
 
 
-
-
-#######
-
-# audBG <- read.csv(paste(pathCosmoResults, 'RhythmBlockDecoding_freesurfer_s2_20210303.csv', sep ='/'))
+# # make a column for roi x hemis
+# roiHemis <- paste(subsetmvpa$roi, subsetmvpa$hemis)
 # 
-# motor <- read.csv(paste(pathCosmoResults, 'RhythmBlockDecoding_neurosnyth_s2_20210303.csv', sep ='/'))
-# 
-# BG <- read.csv(paste(pathCosmoResults, 'RhythmBlockDecoding_BG_s0_vx520_20210308.csv', sep ='/'))
-#   
-# mvpa <- BG
-# 
-# mvpa <- rbind(audBG, motor)
+# df2 <- summarySE(data = subsetmvpa, 
+#                  groupvars=c('roi_order','roiHemis'),
+#                  measurevar='accuracy', na.rm = TRUE)
+# df2
 
-# mvpa <- mvpa[-c(7:9)]
-mvpa$subID <-as.factor(mvpa$subID)
+# divide the hemispheres into 2 plots
+rois = 'Right11Roi'
+subsetmvpaL <-subset(subsetmvpa, hemis == 'r')
 
+df2 <- summarySE(data = subsetmvpaL, 
+                 groupvars=c('roi_order','roi'),
+                 measurevar='accuracy', na.rm = TRUE)
+df2
+
+
+fig <- ggplot(data = subsetmvpaL, 
+              aes(x = reorder(roi, roi_order),
+                  y = accuracy),
+              color = expType) +
+  geom_jitter(size = shapesize, shape = shapetype, stroke = shapestroke, width=0.1, color = nonmetricGrayGood, 
+              na.rm = TRUE) +
+  stat_summary(aes(color = expType), fun=mean, fun.min = mean, fun.max = mean, geom="crossbar", size=0.6, width=0.3,
+               na.rm = TRUE) +
+  theme_classic() +
+  geom_errorbar(data = df2, 
+                aes(ymin = accuracy-se, ymax = accuracy+se), 
+                color = 'black',size=0.5, width=0.15, alpha = transparent, position = position_dodge(width=.75),
+                na.rm = TRUE) +
+  geom_hline(yintercept=c(.5), linetype="dotted", colour="black", size=.5) +
+  
+  ggtitle("") +
+  ylab("") +
+  xlab("") +
+  theme(axis.text.x=element_text(size=8, face = 'bold', angle=0, colour='black')) + # face = 'bold', 
+  theme(axis.text.y=element_text(size=12, angle=0, colour='black')) +
+  theme(axis.title.y=element_text(size=10, angle=90, colour='black')) +
+  scale_y_continuous(limits=setlimit, breaks=setbreak, position="left") +
+  #scale_x_discrete(labels = c("lSTG All", "lSTG 10","lSTG 15","lSTG 20","rSTG All","rSTG 10","rSTG 15","rSTG 20"))+
+  scale_color_manual(name = '', labels =c('Simple vs. Nonmetric'), values=c(nonmetricGrayGood)) + #
+  theme(legend.position= c(.9, 1)) +
+  theme(legend.text=element_text(size=9)) +
+  theme(legend.title=element_text(size=9))
+fig
+
+filename <- paste0(pathResults, 'Decoding_Simple_vs_',cond,  '_', 'voxelNb-',  voxelSize,  '_', rois,  '_', exp,  '_', img, '.png')
+ggsave(filename, fig, dpi=300, width=8, height=2) # 1024 x 512
+
+
+
+
+
+
+
+
+
+
+
+# figure for roi already cointains hemisphere info
+fig <- ggplot(data = subsetmvpa, 
+              aes(x = reorder(roi, roi_order),
+                  y = accuracy),
+              color = expType) +
+  geom_jitter(size = shapesize, shape = shapetype, stroke = shapestroke, width=0.1, color = nonmetricGrayGood, 
+              na.rm = TRUE) +
+  stat_summary(aes(color = expType), fun=mean, fun.min = mean, fun.max = mean, geom="crossbar", size=0.6, width=0.3,
+               na.rm = TRUE) +
+  theme_classic() +
+  geom_errorbar(data = df2, 
+                aes(ymin = accuracy-se, ymax = accuracy+se), 
+                color = 'black',size=0.5, width=0.15, alpha = transparent, position = position_dodge(width=.75),
+                na.rm = TRUE) +
+  geom_hline(yintercept=c(.5), linetype="dotted", colour="black", size=.5) +
+  
+  ggtitle("") +
+  ylab("") +
+  xlab("") +
+  theme(axis.text.x=element_text(size=8, face = 'bold', angle=0, colour='black')) + # face = 'bold', 
+  theme(axis.text.y=element_text(size=12, angle=0, colour='black')) +
+  theme(axis.title.y=element_text(size=10, angle=90, colour='black')) +
+  scale_y_continuous(limits=setlimit, breaks=setbreak, position="left") +
+  scale_x_discrete(labels = c("lSTG All", "lSTG 10","lSTG 15","lSTG 20","rSTG All","rSTG 10","rSTG 15","rSTG 20"))+
+  scale_color_manual(name = '', labels =c('Simple vs. Nonmetric'), values=c(nonmetricGrayGood)) + #
+  theme(legend.position= c(.85, .9)) +
+  theme(legend.text=element_text(size=9)) +
+  theme(legend.title=element_text(size=9))
+fig
+
+filename <- paste0(pathResults, 'Decoding_Simple_vs_',cond,  'voxelNb-', voxelSize,  '_', rois, '.png')
+ggsave(filename, fig, dpi=300, width=6, height=3) # 1024 x 512
+
+
+
+
+
+
+
+
+
+
+
+
+##############################################################################################################
+################################################################################################################
+# OLDER VERSION
 
 mvpa$roi_order <- ifelse(mvpa$mask == 'leftAud', 1, 
                          ifelse(mvpa$mask == 'rightAud', 2, 
@@ -163,18 +373,18 @@ mvpa$roi_order <- ifelse(mvpa$mask == 'leftAud', 1,
                                               ifelse(mvpa$mask == 'leftPremotor', 5,
                                                      ifelse(mvpa$mask == 'rightPremotor',6,7))))))
 mvpa$roi_color_code <- ifelse(mvpa$mask == 'leftAud', 1, 
-                         ifelse(mvpa$mask == 'rightAud', 1, 
-                                ifelse(mvpa$mask == 'leftBG', 2, 
-                                       ifelse(mvpa$mask == 'rightBG',2,
-                                              ifelse(mvpa$mask == 'leftPremotor', 3,
-                                                     ifelse(mvpa$mask == 'rightPremotor',3,4))))))
+                              ifelse(mvpa$mask == 'rightAud', 1, 
+                                     ifelse(mvpa$mask == 'leftBG', 2, 
+                                            ifelse(mvpa$mask == 'rightBG',2,
+                                                   ifelse(mvpa$mask == 'leftPremotor', 3,
+                                                          ifelse(mvpa$mask == 'rightPremotor',3,4))))))
 
 mvpa$mask <- ifelse(mvpa$mask == 'leftAud', 'audL', 
-                         ifelse(mvpa$mask == 'rightAud', 'audR', 
-                                ifelse(mvpa$mask == 'leftBG', 'bgL', 
-                                       ifelse(mvpa$mask == 'rightBG','bgR',
-                                              ifelse(mvpa$mask == 'leftPremotor', 'preL',
-                                                    ifelse(mvpa$mask == 'rightPremotor','preR','SMA'))))))
+                    ifelse(mvpa$mask == 'rightAud', 'audR', 
+                           ifelse(mvpa$mask == 'leftBG', 'bgL', 
+                                  ifelse(mvpa$mask == 'rightBG','bgR',
+                                         ifelse(mvpa$mask == 'leftPremotor', 'preL',
+                                                ifelse(mvpa$mask == 'rightPremotor','preR','SMA'))))))
 # sma roi consist of left/right hemispheres but for plotting 
 # we can show under the same vx size as the others
 # better way would be dividing the masks an re-run the decoding
@@ -184,21 +394,22 @@ mvpa$voxelToPlot <- mvpa$choosenVoxNb
 # ==============================================================================
 # summary stats
 df <- summarySE(data = mvpa, 
-                groupvars=c('mask', 'roi_order', 'image','ffxSmooth','voxelToPlot','roi_color_code'),
+                groupvars=c('mask', 'roi_order', 'image','voxelToPlot','roi_color_code'),
                 measurevar='accuracy')
+df
 
 #################
 pd <- position_dodge(0.1)
 
-filename <- paste(pathCosmoResults, '/plot/', 'Decoding_SimpleVsComplex-1Beta.png', sep = '')
-title <- paste('Simple vs Complex Rhythm Decoding ')
+filename <- paste(pathCosmoResults, '/plot/', 'Decoding_SimpleVsNonmetric-1Beta.png', sep = '')
+title <- paste('Simple vs Nonmetric Rhythm Decoding ')
 
 
 fig <- ggplot(df, aes(x = reorder(mask, roi_order), y = accuracy)) + 
   geom_point(data = mvpa, aes(group=subID), pos=pd, size=2, color=grey(0.8)) + 
   geom_point(size=2,col='black') + 
   geom_hline(yintercept=c(.5), linetype="dotted", colour="red", size=.5) +
-  facet_grid(vars(image,ffxSmooth), vars(voxelToPlot)) +
+  facet_grid(vars(image), vars(voxelToPlot)) +
   geom_errorbar(aes(ymin=accuracy-se,ymax=accuracy+se),size=1,width=0.2) + 
   scale_y_continuous(limits=c(0, .90)) +
   xlab('ROIs')+
@@ -223,9 +434,9 @@ chance = 0.5
 iImage = 't_maps'
 iVoxelNb = 150 # 100 150
 iSmoothing = 2
-roi = 'audR' #preR, preL, audL, audR, SMA, bgR, bgL
+roi = 'preL' #preR, preL, audL, audR, SMA, bgR, bgL
 
-dataAccuracy = subset(mvpa, image == iImage & choosenVoxNb == iVoxelNb & ffxSmooth == iSmoothing & mask ==roi)
+dataAccuracy = subset(mvpa, image == iImage & choosenVoxNb == iVoxelNb & mask ==roi)
 accuracyVector = dataAccuracy$accuracy - chance
 res = t.test(accuracyVector)
 res
