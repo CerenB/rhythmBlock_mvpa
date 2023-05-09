@@ -1,0 +1,43 @@
+{
+  "Name": "Bimodal Motion Grating",
+  "Description": "contrasts for the bimodal motion dataset - MVPA direction",
+  "Input": {
+    "task": "rdkBimodalMotion"
+  },
+  "Steps": [
+    {
+      "Level": "run",
+      "Model": {
+        "X": [
+          "trial_type.auditory_up",
+          "trial_type.auditory_right",
+          "trial_type.auditory_down",
+          "trial_type.auditory_left",
+          "trial_type.visual_up",
+          "trial_type.visual_right",
+          "trial_type.visual_down",
+          "trial_type.visual_left",
+          "trial_type.bimodal_up",
+          "trial_type.bimodal_right",
+          "trial_type.bimodal_down",
+          "trial_type.bimodal_left",
+          "trans_x", "trans_y", "trans_z", "rot_x", "rot_y", "rot_z"
+        ],
+        "Mask": ""
+      },
+      "AutoContrasts": [
+        "trial_type.auditory_up",
+        "trial_type.auditory_right",
+        "trial_type.auditory_down",
+        "trial_type.auditory_left",
+        "trial_type.visual_up",
+        "trial_type.visual_right",
+        "trial_type.visual_down",
+        "trial_type.visual_left",
+        "trial_type.bimodal_up",
+        "trial_type.bimodal_right",
+        "trial_type.bimodal_down",
+        "trial_type.bimodal_left"]
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "Name": "Bimodal Motion Grating",
+  "Description": "contrasts for the bimodal motion dataset",
+  "Input": {
+    "task": "rdkBimodalMotion"
+  },
+  "Steps": [
+    {
+      "Level": "run",
+      "Transformations": [
+        {
+          "Name": "Factor",
+          "Inputs": ["trial_type"]
+        },
+        {
+          "Name": "Convolve",
+          "Model": "spm",
+          "Inputs": [
+            "trial_type.auditory", "trial_type.visual", "trial_type.bimodal"
+          ]
+        }
+      ],
+      "Model": {
+        "X": [
+          "trial_type.auditory",
+          "trial_type.visual",
+          "trial_type.bimodal",
+          "trial_type.response",
+          "trans_x", "trans_y", "trans_z", "rot_x", "rot_y", "rot_z"
+        ],
+        "Options": {
+          "high_pass_filter_cutoff_secs": 128
+        },
+        "Software": {
+          "SPM": {
+            "whitening": "AR(1)"
+          }
+        },
+        "Mask": ""
+      },
+      "AutoContrasts": [
+        "trial_type.auditory",
+        "trial_type.visual",
+        "trial_type.bimodal",
+        "trial_type.response"]
+    },
+    {
+      "Level": "subject",
+      "AutoContrasts": [
+        "trial_type.auditory",
+        "trial_type.visual",
+        "trial_type.bimodal",
+        "trial_type.response"],
+      "Contrasts": [
+        {
+          "Name": "visual_gt_auditory",
+          "ConditionList": [
+            "trial_type.visual", "trial_type.auditory"
+          ],
+          "weights": [1, -1],
+          "type": "t"
+        }
+        {
+          "Name": "auditory_gt_visual",
+          "ConditionList": [
+            "trial_type.auditory", "trial_type.visual"
+          ],
+          "weights": [1, -1],
+          "type": "t"
+        }
+        {
+          "Name": "bimodal_gt_visual",
+          "ConditionList": [
+            "trial_type.bimodal", "trial_type.visual"
+          ],
+          "weights": [1, -1],
+          "type": "t"
+        }
+        {
+          "Name": "bimodal_gt_auditory",
+          "ConditionList": [
+            "trial_type.bimodal", "trial_type.auditory"
+          ],
+          "weights": [1, -1],
+          "type": "t"
+        }
+        {
+          "Name": "visual_gt_auditory&bimodal",
+          "ConditionList": [
+            "trial_type.visual", "trial_type.auditory", "trial_type.bimodal"
+          ],
+          "weights": [1, -.5, -.5],
+          "type": "t"
+        }
+        {
+          "Name": "auditory_gt_visual&bimodal",
+          "ConditionList": [
+            "trial_type.auditory", "trial_type.visual", "trial_type.bimodal"
+          ],
+          "weights": [1, -.5, -.5],
+          "type": "t"
+        }
+        {
+          "Name": "bimodal_gt_visual&auditory",
+          "ConditionList": [
+            "trial_type.bimodal", "trial_type.visual", "trial_type.auditory"
+          ],
+          "weights": [1, -.5, -.5],
+          "type": "t"
+        }
+      ]
+    }
+  ]
+}
