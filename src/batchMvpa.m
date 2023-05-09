@@ -17,7 +17,9 @@ clc;
   cosmo_check_external('libsvm'); % should not give an error
   
   % add cpp repo
-  run ../../rhythmBlock_fMRI_analysis/lib/CPP_BIDS_SPM_pipeline/initCppSpm.m;
+    % add cpp repo
+  run ../lib/bidspm/initCppSpm.m;
+%   run ../../rhythmBlock_fMRI_analysis/lib/CPP_BIDS_SPM_pipeline/initCppSpm.m;
   
   % add mini-helper functions
   addpath(genpath(fullfile(pwd, 'subfun')));
